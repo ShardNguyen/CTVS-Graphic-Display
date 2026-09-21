@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTVS — Standings</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="stage">
+
+    <!-- background grid + glow -->
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+
+    <!-- top bar -->
+    <header class="top-bar">
+      <div class="title-row">
+        <span class="chevrons chevrons--right" aria-hidden="true"><span>&gt;</span><span>&gt;</span><span>&gt;</span></span>
+        <h1 class="title-main"> > > >  Leaderboard  < < < </h1>
+        <span class="chevrons chevrons--left" aria-hidden="true"><span>&lt;</span><span>&lt;</span><span>&lt;</span></span>
+      </div>
+
+      <div class="meta-row">
+        <span class="pill" id="weekDay">Week 1 Day 1</span>
+        <span class="pill" id="division">Premier Division</span>
+      </div>
+    </header>
+
+    <!-- standings table -->
+    <main class="board">
+      <div class="table" id="table" role="table" aria-label="Standings">
+
+        <div class="row row--head" role="row">
+          <div class="cell cell--rank" role="columnheader"></div>
+          <div class="cell cell--team" role="columnheader"></div>
+          <div class="cell cell--points head-points" role="columnheader">POINTS</div>
+          <div class="cell cell--stat head-stat" role="columnheader">W - L</div>
+          <div class="cell cell--stat head-stat" role="columnheader">GW</div>
+          <div class="cell cell--stat head-stat" role="columnheader">GL</div>
+          <div class="cell cell--stat head-stat" role="columnheader">GD</div>
+        </div>
+
+        <div class="rows" id="rows">
+          <!-- data rows injected here -->
+        </div>
+
+      </div>
+
+      <div class="status" id="status" hidden></div>
+    </main>
+  </div>
+
+  <!-- settings panel (hidden by default, press "S" or click gear to open) -->
+  <button id="settingsBtn" class="settings-btn" title="Settings (S)" aria-label="Open settings">⚙</button>
+  <div id="settingsPanel" class="settings-panel" hidden>
+    <h2>Connection settings</h2>
+
+    <label>
+      Google Sheet URL or ID
+      <input id="cfgSheetId" type="text" placeholder="Paste the full Google Sheets link or just the ID">
+    </label>
+
+    <label>
+      Tab / sheet name
+      <input id="cfgSheetName" type="text" placeholder="LEADERBOARD - PREMIER">
+    </label>
+
+    <label>
+      Week / day label
+      <input id="cfgWeekDay" type="text" placeholder="Week 1 Day 1">
+    </label>
+
+    <label>
+      Division label
+      <input id="cfgDivision" type="text" placeholder="Premier Division">
+    </label>
+
+    <label>
+      Refresh interval (seconds)
+      <input id="cfgRefresh" type="number" min="3" step="1" placeholder="15">
+    </label>
+
+    <h2>Footer</h2>
+
+    <label>
+      Brand name / year (bottom-left)
+      <span class="settings-row">
+        <input id="cfgBrandName" type="text" placeholder="CTVS">
+        <input id="cfgBrandYear" type="text" placeholder="2027">
+      </span>
+    </label>
+
+    <label>
+      Season words (bottom-right)
+      <span class="settings-row">
+        <input id="cfgSeasonWord1" type="text" placeholder="WINTER">
+        <input id="cfgSeasonWord2" type="text" placeholder="SPLIT">
+      </span>
+    </label>
+
+    <label>
+      Commentators
+      <span class="settings-row">
+        <input id="cfgCommentator1" type="text" placeholder="Commentator">
+        <input id="cfgCommentator2" type="text" placeholder="Commentator">
+      </span>
+    </label>
+
+    <label>
+      Sponsor / partner slots
+      <span class="settings-row">
+        <input id="cfgSponsor1" type="text" placeholder="Sponsor 1">
+        <input id="cfgSponsor2" type="text" placeholder="Sponsor 2">
+      </span>
+    </label>
+
+    <div class="settings-actions">
+      <button id="cfgSave" class="btn btn--primary">Save &amp; reload</button>
+      <button id="cfgClose" class="btn">Close</button>
+    </div>
+
+    <p class="settings-hint">
+      The sheet must be shared as <strong>“Anyone with the link — Viewer”</strong>.
+      Data is read from columns laid out like the CTVS leaderboard sheet:
+      Rank, Team, Points, W, –, L, GW, GL, GD.
+    </p>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

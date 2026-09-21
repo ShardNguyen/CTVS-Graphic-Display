@@ -1,0 +1,13 @@
+{
+  "name": "ctvs-web-graphics-display",
+  "version": "1.0.0",
+  "description": "A web to display the results, leaderboards, time schedule for upcoming matches for Classic Tetris Vietnam Series",
+  "type": "commonjs",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
