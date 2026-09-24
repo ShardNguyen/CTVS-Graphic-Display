@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTVS — Schedule</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="stage">
+
+    <!-- background grid + glow -->
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+
+    <!-- top bar -->
+    <header class="top-bar">
+      <div class="title-row">
+        <span class="chevrons chevrons--right" aria-hidden="true"><span>&gt;</span><span>&gt;</span><span>&gt;</span></span>
+        <h1 class="title-main"> > > >  Schedule  < < < </h1>
+        <span class="chevrons chevrons--left" aria-hidden="true"><span>&lt;</span><span>&lt;</span><span>&lt;</span></span>
+      </div>
+
+      <div class="meta-row">
+        <span class="pill" id="weekDay">Week 1 Day 1</span>
+        <span class="pill" id="division">Match Day</span>
+      </div>
+    </header>
+
+    <!-- schedule boxes -->
+    <main class="board">
+      <div class="schedule" id="schedule" role="list" aria-label="Match schedule">
+        <!-- 4 match boxes injected here -->
+      </div>
+
+      <div class="status" id="status" hidden></div>
+    </main>
+  </div>
+
+  <!-- settings panel (hidden by default, press "S" or click gear to open) -->
+  <button id="settingsBtn" class="settings-btn" title="Settings (S)" aria-label="Open settings">⚙</button>
+  <div id="settingsPanel" class="settings-panel" hidden>
+    <h2>Connection settings</h2>
+
+    <label>
+      Google Sheet URL or ID
+      <input id="cfgSheetId" type="text" placeholder="Paste the full Google Sheets link or just the ID">
+    </label>
+
+    <label>
+      Tab / sheet name
+      <input id="cfgSheetName" type="text" placeholder="SCHEDULE - PREMIER">
+    </label>
+
+    <label>
+      Week / day label
+      <input id="cfgWeekDay" type="text" placeholder="Week 1 Day 1">
+    </label>
+
+    <label>
+      Sub-title label
+      <input id="cfgDivision" type="text" placeholder="Match Day">
+    </label>
+
+    <label>
+      Refresh interval (seconds)
+      <input id="cfgRefresh" type="number" min="3" step="1" placeholder="15">
+    </label>
+
+    <div class="settings-actions">
+      <button id="cfgSave" class="btn btn--primary">Save &amp; reload</button>
+      <button id="cfgClose" class="btn">Close</button>
+    </div>
+
+    <p class="settings-hint">
+      The sheet must be shared as <strong>“Anyone with the link — Viewer”</strong>.
+      Data is read starting from the "SCHEDULE" label cell in the sheet;
+      each row below it is laid out as: Match ID, Division / Group, Player 1, Format, Player 2.
+      Only the first four match rows found are shown, one per box.
+    </p>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
