@@ -144,3 +144,6 @@ vite.config.ts.timestamp-*
 
 # Jetbrain Riders
 .idea/
+
+# The Sac Nguyen folder
+/sac

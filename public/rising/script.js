@@ -13,11 +13,11 @@ const DEFAULT_CONFIG = {
 };
 
 function loadConfig(){
-  try{
+  try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if(!raw) return { ...DEFAULT_CONFIG };
     return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
-  }catch(e){
+  } catch(e){
     return { ...DEFAULT_CONFIG };
   }
 }
