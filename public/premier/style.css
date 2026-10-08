@@ -44,10 +44,9 @@
   --font-mono: ui-monospace, 'SFMono-Regular', 'Courier New', Consolas, monospace;
 
   --col-rank:   1.1fr;
-  --col-team:   6.4fr;
-  --col-points: 1.9fr;
+  --col-team:   6.5fr;
   --col-wl:     2.1fr;
-  --col-stat:   1.5fr;
+  --col-stat:   2.1fr;
 }
 
 *{ box-sizing:border-box; }
@@ -159,7 +158,9 @@ html,body{
   display:flex;
   flex-direction:column;
   justify-content:center;
-  padding: clamp(16px,2.5vh,28px) clamp(24px,4vw,64px);
+  padding-bottom: clamp(24px, 11vh, 128px);
+  padding-left: clamp(24px,4vw,64px);
+  padding-right: clamp(24px,4vw,64px);
 }
 
 .table{
@@ -170,7 +171,7 @@ html,body{
 .row{
   display:grid;
   grid-template-columns:
-    var(--col-rank) var(--col-team) var(--col-points)
+    var(--col-rank) var(--col-team)
     var(--col-wl) var(--col-stat) var(--col-stat) var(--col-stat);
   align-items:stretch;
 }
@@ -193,8 +194,6 @@ div[role="columnheader"] {
   border-bottom: 4px solid var(--blue-border);
   font-family: var(--font-display);
 }
-.head-points{ justify-content:center; }
-.head-stat{ justify-content:center; }
 
 /* data rows */
 .rows{ display:flex; flex-direction:column; }
@@ -209,24 +208,23 @@ div[role="columnheader"] {
   color: var(--blue-light);
   letter-spacing:.01em;
 }
-.cell--points{
-  font-family: score, Helvetica, sans-serif;
-  justify-content:center;
-  font-size: clamp(22px, 2.6vw, 38px);
-  color: var(--blue-light);
-}
 .cell--wl{
-  font-family: score, Helvetica, sans-serif;
-  color: var(--white);
-  font-size: clamp(22px, 2.6vw, 38px);
   justify-content:center;
+  font-family: score, Helvetica, sans-serif;
+  font-weight: bold;
+  font-size:44px;
+  color:var(--blue-light);
 }
 .cell--stat{
-  font-family: score, Helvetica, sans-serif;
-  color: var(--white);
-  font-size: clamp(22px, 2.6vw, 38px);
   justify-content:center;
+  font-family: var(--font-mono);
+  font-weight:300;
+  font-size:44px;
+  color:var(--white);
 }
+
+.head-stat{ justify-content:center; }
+.main-stat{ color: var(--blue-light); }
 
 /* status / loading / error */
 .status{
@@ -336,8 +334,7 @@ div[role="columnheader"] {
 @media (max-width: 820px){
   :root{
     --col-rank: .8fr;
-    --col-team: 4fr;
-    --col-points: 1.4fr;
+    --col-team: 5.4fr;
     --col-wl: 1.6fr;
     --col-stat: 1.1fr;
   }

@@ -41,14 +41,21 @@
   --pill-text:   #0c3446;
 
   /* schedule box specific */
-  --box-header-bg: var(--blue-light);
-  --box-header-text: var(--pill-text);
-  --box-body-from: #0c7299;
-  --box-body-via:  #085a78;
-  --box-body-to:   #0c7299;
-  --format-pill-from: #4d94d8;
-  --format-pill-to:   #2f6bab;
-  --format-pill-text: var(--blue-light);
+  --box-header-text: #143b4d;
+  --format-pill-bg:   #4d94d8;
+  --format-pill-text: #dceaf7;
+
+  /* PREMIER box: header edge -> centre, body edge -> centre */
+  --premier-hdr-edge: #62cbf4;
+  --premier-hdr-mid:  #94dbf8;
+  --premier-body-edge:#0b759f;
+  --premier-body-mid: #084f6a;
+
+  /* RISING box */
+  --rising-hdr-edge:  #5096d9;
+  --rising-hdr-mid:   #a2c8eb;
+  --rising-body-edge: #215e99;
+  --rising-body-mid:  #163e64;
   --box-empty-header-bg: rgba(150, 220, 248, .18);
   --box-empty-body-bg: rgba(12, 114, 153, .18);
 
@@ -163,9 +170,8 @@ html,body{
   z-index:2;
   flex:1;
   display:flex;
-  flex-direction:column;
   justify-content:center;
-  padding: clamp(16px,2.5vh,28px) clamp(24px,4vw,64px);
+  padding: clamp(16px, 6vh, 200px) clamp(24px, 4vw, 64px);
 }
 
 .schedule{
@@ -177,42 +183,66 @@ html,body{
 
 .match-box{
   width:100%;
-  border-radius:2px;
   overflow:hidden;
-  box-shadow: 0 6px 18px rgba(0,0,0,.35);
 }
 
 .match-header{
-  display:flex;
+  display:grid;
+  grid-template-columns: 1fr auto 1fr;   /* id | division (centred) | best-of */
   align-items:center;
-  justify-content:space-between;
   gap: clamp(10px, 1.4vw, 26px);
-  background: var(--box-header-bg);
+  background: linear-gradient(90deg, var(--hdr-edge) 0%, var(--hdr-mid) 50%, var(--hdr-edge) 100%);
   color: var(--box-header-text);
-  padding: clamp(10px,1.6vh,16px) clamp(16px,2.2vw,32px);
+  padding: clamp(8px,1.3vh,14px) clamp(16px,2.2vw,32px);
   min-height: clamp(34px, 5vh, 52px);
+  font-family: var(--font-mono);
+  text-transform:uppercase;
 }
 
 .match-id{
-  font-family: var(--font-mono);
-  font-weight:600;
+  justify-self:start;
+  font-weight:500;
   letter-spacing:.03em;
-  font-size: clamp(15px, 0.95vw, 26px);
+  font-size: clamp(14px, 0.95vw, 26px);
+  white-space:nowrap;
 }
 
 .match-division{
-  font-family: var(--font-display);
-  font-weight:bold;
-  text-transform:uppercase;
-  letter-spacing:.02em;
-  font-size: clamp(16px, 0.95vw, 28px);
+  justify-self:center;
+  text-align:center;
+  font-weight:700;
+  letter-spacing:.03em;
+  font-size: clamp(16px, 1.25vw, 34px);
+  white-space:nowrap;
+}
+
+.match-bestof{
+  justify-self:end;
+  font-weight:500;
+  letter-spacing:.03em;
+  font-size: clamp(14px, 0.95vw, 26px);
+  white-space:nowrap;
 }
 
 .match-body{
   display:flex;
   align-items:stretch;
-  background: linear-gradient(90deg, var(--box-body-from) 0%, var(--box-body-via) 50%, var(--box-body-to) 100%);
+  background: linear-gradient(90deg, var(--body-edge) 0%, var(--body-mid) 50%, var(--body-edge) 100%);
   min-height: clamp(48px, 7.5vh, 78px);
+}
+
+/* colour themes — chosen from the division text (see getMatchType in script.js) */
+.match-box--premier{
+  --hdr-edge:  var(--premier-hdr-edge);
+  --hdr-mid:   var(--premier-hdr-mid);
+  --body-edge: var(--premier-body-edge);
+  --body-mid:  var(--premier-body-mid);
+}
+.match-box--rising{
+  --hdr-edge:  var(--rising-hdr-edge);
+  --hdr-mid:   var(--rising-hdr-mid);
+  --body-edge: var(--rising-body-edge);
+  --body-mid:  var(--rising-body-mid);
 }
 
 .player{
@@ -230,6 +260,15 @@ html,body{
   padding: clamp(12px,1.8vh,20px) clamp(16px,2.2vw,32px);
   overflow:hidden;
 }
+/* "2nd" / "3rd" suffixes sit raised and smaller */
+.player .ordinal{
+  font-size:.6em;
+  line-height:1;
+  vertical-align:baseline;
+  position:relative;
+  top:-.55em;
+  margin-left:.05em;
+}
 /* each player takes an equal half of the row (shrinking equally as the
    pill grows), so its text sits right up against the center line —
    left player aligns right (toward the pill), right player aligns left */
@@ -242,17 +281,17 @@ html,body{
    locked to center instead of drifting. align-self:stretch makes it cover
    the full height of .match-body. */
 .format-pill{
-  flex:0 0 10%;
+  flex:0 0 16%;
   align-self:stretch;
   display:flex;
   align-items:center;
   justify-content:center;
   font-family: var(--font-mono);
-  font-weight:600;
+  font-weight:500;
   color: var(--format-pill-text);
-  background: linear-gradient(180deg, var(--format-pill-from), var(--format-pill-to));
-  font-size: clamp(14px, 1.6vw, 24px);
-  letter-spacing:.04em;
+  background: var(--format-pill-bg);
+  font-size: clamp(14px, 1.6vw, 30px);
+  letter-spacing:.06em;
   padding: 0 1em;
   white-space:nowrap;
 }

@@ -8,7 +8,6 @@ const DEFAULT_CONFIG = {
   sheetId: '',
   sheetName: 'SCHEDULE - PREMIER',
   weekDay: 'Week 1 Day 1',
-  division: 'Match Day',
   refreshSeconds: 15
 };
 
@@ -69,7 +68,9 @@ function parseCSV(text){
 
 /* ---------------- Schedule extraction ----------------
    Layout mirrors the CTVS schedule sheet:
-   ... | Match ID | Division / Group | Player 1 | Format | Player 2 | ...
+   ... | Match ID | Division / Group | Player 1 | Time | Player 2 | ...
+   (columns C-G of the "SCHEDULE - PREMIER" tab; the "format" field is the
+   kick-off time shown in the middle pill)
    We locate the "SCHEDULE" label cell and then read every match row
    relative to its column, which keeps this working even if extra
    columns exist to the left/right (as in the source file). Rows that
@@ -123,6 +124,30 @@ function extractSchedule(rows){
   return matches;
 }
 
+/* ---------------- Match-type rules ----------------
+   The division text (center of the header) decides the theme and the
+   "Best-of" text on the right:
+     contains "Premier" -> Best-of-5
+     contains "Rising"  -> Best-of-3                                  */
+function getMatchType(division){
+  const d = (division || '').toLowerCase();
+  if(d.includes('premier')) return { key: 'premier', bestOf: 'Best-of-5' };
+  if(d.includes('rising'))  return { key: 'rising',  bestOf: 'Best-of-3' };
+  return { key: 'premier', bestOf: '' };   // unknown division: default look, no format text
+}
+
+/* Excel stores the time as h:mm, but normalise "20:00:00" -> "20:00" just in case. */
+function formatTime(value){
+  const m = (value || '').trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  return m ? `${m[1].padStart(2, '0')}:${m[2]}` : (value || '').trim();
+}
+
+/* Player names like "2nd Seed" -> 2<sup>nd</sup> Seed (as in the design). */
+function formatPlayer(name){
+  const html = escapeHTML(name).replace(/(\d+)(st|nd|rd|th)\b/gi, '$1<sup class="ordinal">$2</sup>');
+  return `<span class="player-name">${html}</span>`;   // wrapper keeps the space intact inside the flex .player
+}
+
 /* ---------------- Rendering ---------------- */
 function renderMatches(matches){
   const container = document.getElementById('schedule');
@@ -131,7 +156,9 @@ function renderMatches(matches){
   for(let i = 0; i < MAX_BOXES; i++){
     const m = matches[i];
     const box = document.createElement('div');
-    box.className = 'match-box' + (m ? '' : ' match-box--empty');
+    const type = m ? getMatchType(m.division) : null;
+    box.className = 'match-box' +
+      (m ? ` match-box--${type.key}` : ' match-box--empty');
     box.setAttribute('role', 'listitem');
 
     if(m){
@@ -139,11 +166,12 @@ function renderMatches(matches){
         <div class="match-header">
           <span class="match-id">MATCH ${escapeHTML(m.matchId)}</span>
           <span class="match-division">${escapeHTML(m.division)}</span>
+          <span class="match-bestof">${escapeHTML(type.bestOf)}</span>
         </div>
         <div class="match-body">
-          <span class="player player--left">${escapeHTML(m.player1)}</span>
-          <span class="format-pill">${escapeHTML(m.format)}</span>
-          <span class="player player--right">${escapeHTML(m.player2)}</span>
+          <span class="player player--left">${formatPlayer(m.player1)}</span>
+          <span class="format-pill">${escapeHTML(formatTime(m.format))}</span>
+          <span class="player player--right">${formatPlayer(m.player2)}</span>
         </div>
       `;
     } else {
@@ -217,7 +245,6 @@ function scheduleRefresh(cfg){
 /* ---------------- Settings UI ---------------- */
 function applyCosmeticConfig(cfg){
   document.getElementById('weekDay').textContent   = cfg.weekDay   || DEFAULT_CONFIG.weekDay;
-  document.getElementById('division').textContent  = cfg.division || DEFAULT_CONFIG.division;
 }
 
 function initSettingsUI(cfg){
@@ -226,13 +253,11 @@ function initSettingsUI(cfg){
   const idIn  = document.getElementById('cfgSheetId');
   const nameIn= document.getElementById('cfgSheetName');
   const weekDayIn  = document.getElementById('cfgWeekDay');
-  const divisionIn = document.getElementById('cfgDivision');
   const refreshIn = document.getElementById('cfgRefresh');
 
   idIn.value = cfg.sheetId;
   nameIn.value = cfg.sheetName;
   weekDayIn.value = cfg.weekDay;
-  divisionIn.value = cfg.division;
   refreshIn.value = cfg.refreshSeconds;
 
   const open = () => { panel.hidden = false; idIn.focus(); };
@@ -253,7 +278,6 @@ function initSettingsUI(cfg){
       sheetId: idIn.value.trim(),
       sheetName: nameIn.value.trim() || DEFAULT_CONFIG.sheetName,
       weekDay: weekDayIn.value.trim() || DEFAULT_CONFIG.weekDay,
-      division: divisionIn.value.trim() || DEFAULT_CONFIG.division,
       refreshSeconds: Number(refreshIn.value) || DEFAULT_CONFIG.refreshSeconds
     };
     saveConfig(newCfg);

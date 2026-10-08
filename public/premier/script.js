@@ -66,38 +66,51 @@ function parseCSV(text){
 }
 
 /* ---------------- Standings extraction ----------------
-   Layout mirrors the CTVS leaderboard sheet:
-   ... | Rank | Team | Points | W | – | L | GW | GL | GD | ...
-   We locate the header by finding the "Points" cell, then
-   read every column relative to it, which keeps this working
-   even if extra columns exist to the left (as in the source file). */
+   Layout mirrors the "LEADERBOARD - PREMIER" tab of the CTVS sheet:
+   ... | Rank | Team | W | - | L | GW | GL | GD | ...
+   We locate the header by finding the "W - L" cell (falling back to the
+   first "GW" cell), then read every column relative to it. */
 function extractStandings(rows){
   let headerRowIdx = -1;
-  let pointsCol = -1;
+  let wlCol = -1;
+  const norm = v => (v || '').trim().toLowerCase().replace(/\s+/g, ' ');
 
   outer:
   for(let r = 0; r < rows.length; r++){
     const row = rows[r];
     for(let c = 0; c < row.length; c++){
-      if((row[c] || '').trim().toLowerCase() === 'points'){
+      if(norm(row[c]) === 'w - l'){
         headerRowIdx = r;
-        pointsCol = c;
+        wlCol = c;
         break outer;
       }
     }
   }
 
-  if(pointsCol === -1){
-    throw new Error('Could not find a "Points" column header in the sheet.');
+  if(wlCol === -1){
+    outer2:
+    for(let r = 0; r < rows.length; r++){
+      for(let c = 0; c < rows[r].length; c++){
+        if(norm(rows[r][c]) === 'gw'){
+          headerRowIdx = r;
+          wlCol = c - 3;
+          break outer2;
+        }
+      }
+    }
   }
 
-  const rankCol   = pointsCol - 2;
-  const teamCol   = pointsCol - 1;
-  const winCol    = pointsCol + 1;
-  const lossCol   = pointsCol + 3;
-  const gwCol     = pointsCol + 4;
-  const glCol     = pointsCol + 5;
-  const gdCol     = pointsCol + 6;
+  if(wlCol < 2){
+    throw new Error('Could not find the "W - L" column header in the sheet.');
+  }
+
+  const rankCol   = wlCol - 2;
+  const teamCol   = wlCol - 1;
+  const winCol    = wlCol;
+  const lossCol   = wlCol + 2;
+  const gwCol     = wlCol + 3;
+  const glCol     = wlCol + 4;
+  const gdCol     = wlCol + 5;
 
   const toInt = v => {
     const n = parseInt(String(v).replace(/[^\d-]/g, ''), 10);
@@ -115,7 +128,6 @@ function extractStandings(rows){
     teams.push({
       rank,
       team,
-      points: toInt(row[pointsCol]),
       win:    toInt(row[winCol]),
       loss:   toInt(row[lossCol]),
       gw:     toInt(row[gwCol]),
@@ -143,7 +155,6 @@ function renderRows(teams){
     row.innerHTML = `
       <div class="cell cell--rank" role="cell">${t.rank ?? ''}</div>
       <div class="cell cell--team" role="cell">${escapeHTML(t.team)}</div>
-      <div class="cell cell--points" role="cell">${t.points ?? '–'}</div>
       <div class="cell cell--wl" role="cell">${t.win ?? '–'} - ${t.loss ?? '–'}</div>
       <div class="cell cell--stat" role="cell">${t.gw ?? '–'}</div>
       <div class="cell cell--stat" role="cell">${t.gl ?? '–'}</div>

@@ -3,53 +3,63 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CTVS — Standings</title>
+<title>CTVS — Leaderboard</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <div class="stage">
+  <!-- Fixed 1920x1080 canvas, scaled to fit the window by script.js -->
+  <div class="stage" id="stage">
 
-    <!-- background grid + glow -->
-    <div class="bg-grid"></div>
-    <div class="bg-glow"></div>
+    <div class="bg-stripes" aria-hidden="true"></div>
 
     <!-- top bar -->
     <header class="top-bar">
       <div class="title-row">
-        <span class="chevrons chevrons--right" aria-hidden="true"><span>&gt;</span><span>&gt;</span><span>&gt;</span></span>
-        <h1 class="title-main"> > > >  Leaderboard  < < < </h1>
-        <span class="chevrons chevrons--left" aria-hidden="true"><span>&lt;</span><span>&lt;</span><span>&lt;</span></span>
-      </div>
-
-      <div class="meta-row">
-        <span class="pill" id="weekDay">Week 1 Day 1</span>
-        <span class="pill" id="division">Premier Division</span>
+        <span class="chevrons" aria-hidden="true">
+          <svg viewBox="0 0 54 52"><polygon points="0,0 19,0 54,26 19,52 0,52 35,26"/></svg>
+          <svg viewBox="0 0 54 52"><polygon points="0,0 19,0 54,26 19,52 0,52 35,26"/></svg>
+          <svg viewBox="0 0 54 52"><polygon points="0,0 19,0 54,26 19,52 0,52 35,26"/></svg>
+        </span>
+        <h1 class="title-main">Leaderboard</h1>
+        <span class="chevrons chevrons--left" aria-hidden="true">
+          <svg viewBox="0 0 54 52"><polygon points="0,0 19,0 54,26 19,52 0,52 35,26"/></svg>
+          <svg viewBox="0 0 54 52"><polygon points="0,0 19,0 54,26 19,52 0,52 35,26"/></svg>
+          <svg viewBox="0 0 54 52"><polygon points="0,0 19,0 54,26 19,52 0,52 35,26"/></svg>
+        </span>
       </div>
     </header>
 
-    <!-- standings table -->
+    <div class="meta-row">
+      <span class="pill" id="division">Rising Division</span>
+    </div>
+
+    <!-- two group tables, side by side -->
     <main class="board">
-      <div class="table" id="table" role="table" aria-label="Standings">
-
+      <section class="table" id="tableA" role="table" aria-label="Group A standings">
         <div class="row row--head" role="row">
-          <div class="cell cell--rank" role="columnheader"></div>
-          <div class="cell cell--team" role="columnheader"></div>
-          <div class="cell cell--points head-points" role="columnheader">POINTS</div>
-          <div class="cell cell--stat head-stat" role="columnheader">W - L</div>
-          <div class="cell cell--stat head-stat" role="columnheader">GW</div>
-          <div class="cell cell--stat head-stat" role="columnheader">GL</div>
-          <div class="cell cell--stat head-stat" role="columnheader">GD</div>
+          <div class="cell cell--team" role="columnheader" id="groupALabel">Group A</div>
+          <div class="cell cell--wl head-wl" role="columnheader">W - L</div>
+          <div class="cell cell--stat" role="columnheader">GW</div>
+          <div class="cell cell--stat" role="columnheader">GL</div>
+          <div class="cell cell--stat" role="columnheader">GD</div>
         </div>
+        <div class="rows" id="rowsA"></div>
+      </section>
 
-        <div class="rows" id="rows">
-          <!-- data rows injected here -->
+      <section class="table" id="tableB" role="table" aria-label="Group B standings">
+        <div class="row row--head" role="row">
+          <div class="cell cell--team" role="columnheader" id="groupBLabel">Group B</div>
+          <div class="cell cell--wl head-wl" role="columnheader">W - L</div>
+          <div class="cell cell--stat" role="columnheader">GW</div>
+          <div class="cell cell--stat" role="columnheader">GL</div>
+          <div class="cell cell--stat" role="columnheader">GD</div>
         </div>
-
-      </div>
-
-      <div class="status" id="status" hidden></div>
+        <div class="rows" id="rowsB"></div>
+      </section>
     </main>
+
+    <div class="status" id="status" hidden></div>
   </div>
 
   <!-- settings panel (hidden by default, press "S" or click gear to open) -->
@@ -63,58 +73,30 @@
     </label>
 
     <label>
-      Tab / sheet name
-      <input id="cfgSheetName" type="text" placeholder="LEADERBOARD - PREMIER">
+      Group A — tab name &amp; label
+      <span class="settings-row">
+        <input id="cfgSheetNameA" type="text" placeholder="LEADERBOARD - GROUP A">
+        <input id="cfgGroupA" type="text" placeholder="Group A">
+      </span>
     </label>
 
     <label>
-      Week / day label
-      <input id="cfgWeekDay" type="text" placeholder="Week 1 Day 1">
+      Group B — tab name &amp; label
+      <span class="settings-row">
+        <input id="cfgSheetNameB" type="text" placeholder="LEADERBOARD - GROUP B">
+        <input id="cfgGroupB" type="text" placeholder="Group B">
+      </span>
     </label>
 
     <label>
       Division label
-      <input id="cfgDivision" type="text" placeholder="Premier Division">
+      <input id="cfgDivision" type="text" placeholder="Rising Division">
     </label>
 
     <label>
       Refresh interval (seconds)
       <input id="cfgRefresh" type="number" min="3" step="1" placeholder="15">
     </label>
-
-<!--    <h2>Footer</h2>-->
-
-<!--    <label>-->
-<!--      Brand name / year (bottom-left)-->
-<!--      <span class="settings-row">-->
-<!--        <input id="cfgBrandName" type="text" placeholder="CTVS">-->
-<!--        <input id="cfgBrandYear" type="text" placeholder="2027">-->
-<!--      </span>-->
-<!--    </label>-->
-
-<!--    <label>-->
-<!--      Season words (bottom-right)-->
-<!--      <span class="settings-row">-->
-<!--        <input id="cfgSeasonWord1" type="text" placeholder="WINTER">-->
-<!--        <input id="cfgSeasonWord2" type="text" placeholder="SPLIT">-->
-<!--      </span>-->
-<!--    </label>-->
-
-<!--    <label>-->
-<!--      Commentators-->
-<!--      <span class="settings-row">-->
-<!--        <input id="cfgCommentator1" type="text" placeholder="Commentator">-->
-<!--        <input id="cfgCommentator2" type="text" placeholder="Commentator">-->
-<!--      </span>-->
-<!--    </label>-->
-
-<!--    <label>-->
-<!--      Sponsor / partner slots-->
-<!--      <span class="settings-row">-->
-<!--        <input id="cfgSponsor1" type="text" placeholder="Sponsor 1">-->
-<!--        <input id="cfgSponsor2" type="text" placeholder="Sponsor 2">-->
-<!--      </span>-->
-<!--    </label>-->
 
     <div class="settings-actions">
       <button id="cfgSave" class="btn btn--primary">Save &amp; reload</button>
@@ -123,8 +105,9 @@
 
     <p class="settings-hint">
       The sheet must be shared as <strong>“Anyone with the link — Viewer”</strong>.
-      Data is read from columns laid out like the CTVS leaderboard sheet:
-      Rank, Team, Points, W, –, L, GW, GL, GD.
+      Both tabs use the same layout as the <strong>LEADERBOARD - PREMIER</strong> tab:
+      Rank, Team, W, –, L, GW, GL, GD (standings start at the first row whose
+      rank is a number).
     </p>
   </div>
 

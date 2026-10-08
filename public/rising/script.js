@@ -1,14 +1,21 @@
 /* ============================================================
-   CTVS Standings — Google Sheets powered broadcast graphic
+   CTVS Leaderboard — Google Sheets powered broadcast graphic
+   Reads TWO tabs (Group A / Group B) from one Google Sheet.
+   Each tab uses the same layout as "LEADERBOARD - PREMIER":
+
+        Rank | Team | W | – | L | GW | GL | GD
    ============================================================ */
 
 const STORAGE_KEY = 'ctvs-standings-config-rising';
+const PLACEHOLDER_ROWS = 4;
 
 const DEFAULT_CONFIG = {
   sheetId: '',
-  sheetName: 'LEADERBOARD - PREMIER',
-  weekDay: 'Week 1 Day 1',
-  division: 'Premier Division',
+  sheetNameA: 'LEADERBOARD - GROUP A',
+  sheetNameB: 'LEADERBOARD - GROUP B',
+  groupA: 'Group A',
+  groupB: 'Group B',
+  division: 'Rising Division',
   refreshSeconds: 15
 };
 
@@ -23,7 +30,7 @@ function loadConfig(){
 }
 
 function saveConfig(cfg){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg)); } catch(e){}
 }
 
 /** Accepts either a raw Sheet ID or a full Google Sheets URL and returns the ID. */
@@ -66,97 +73,121 @@ function parseCSV(text){
 }
 
 /* ---------------- Standings extraction ----------------
-   Layout mirrors the CTVS leaderboard sheet:
-   ... | Rank | Team | Points | W | – | L | GW | GL | GD | ...
-   We locate the header by finding the "Points" cell, then
-   read every column relative to it, which keeps this working
-   even if extra columns exist to the left (as in the source file). */
+   Layout of every leaderboard tab (same as LEADERBOARD - PREMIER):
+
+     col:  c     c+1   c+2  c+3  c+4  c+5  c+6  c+7
+           Rank  Team  W    –    L    GW   GL   GD
+
+   Header text is NOT relied on (Google's CSV export can swallow header
+   cells that sit in numeric columns). Instead we look for the first row
+   that "looks like" a standings row — numeric rank, a team name, then
+   numeric W / L / GW / GL / GD — and read downward from there until the
+   block ends. Extra columns to the left, or the helper table to the
+   right (Buchholz etc.), are ignored. */
+const isIntLike = v => /^-?\d+(\.0+)?$/.test(String(v ?? '').trim());
+const toInt = v => {
+  const n = parseInt(String(v ?? '').replace(/[^\d-]/g, ''), 10);
+  return Number.isFinite(n) ? n : null;
+};
+
+function looksLikeStandingsRow(row, c){
+  const team = String(row[c + 1] ?? '').trim();
+  return isIntLike(row[c]) &&
+         team !== '' && !isIntLike(team) && team !== '-' &&
+         isIntLike(row[c + 2]) &&            // W
+         isIntLike(row[c + 4]) &&            // L
+         isIntLike(row[c + 5]) &&            // GW
+         isIntLike(row[c + 6]) &&            // GL
+         isIntLike(row[c + 7]);              // GD
+}
+
 function extractStandings(rows){
-  let headerRowIdx = -1;
-  let pointsCol = -1;
+  let startRow = -1;
+  let rankCol = -1;
 
   outer:
   for(let r = 0; r < rows.length; r++){
     const row = rows[r];
     for(let c = 0; c < row.length; c++){
-      if((row[c] || '').trim().toLowerCase() === 'points'){
-        headerRowIdx = r;
-        pointsCol = c;
-        break outer;
-      }
+      if(looksLikeStandingsRow(row, c)){ startRow = r; rankCol = c; break outer; }
     }
   }
 
-  if(pointsCol === -1){
-    throw new Error('Could not find a "Points" column header in the sheet.');
+  if(startRow === -1){
+    throw new Error('Could not find standings rows (Rank, Team, W, –, L, GW, GL, GD).');
   }
 
-  const rankCol   = pointsCol - 2;
-  const teamCol   = pointsCol - 1;
-  const winCol    = pointsCol + 1;
-  const lossCol   = pointsCol + 3;
-  const gwCol     = pointsCol + 4;
-  const glCol     = pointsCol + 5;
-  const gdCol     = pointsCol + 6;
-
-  const toInt = v => {
-    const n = parseInt(String(v).replace(/[^\d-]/g, ''), 10);
-    return Number.isFinite(n) ? n : null;
-  };
-
   const teams = [];
-  for(let r = headerRowIdx + 1; r < rows.length; r++){
+  for(let r = startRow; r < rows.length; r++){
     const row = rows[r];
     const rank = toInt(row[rankCol]);
-    const team = (row[teamCol] || '').trim();
-
+    const team = String(row[rankCol + 1] ?? '').trim();
     if(rank === null || !team) break; // end of the standings block
 
     teams.push({
       rank,
       team,
-      points: toInt(row[pointsCol]),
-      win:    toInt(row[winCol]),
-      loss:   toInt(row[lossCol]),
-      gw:     toInt(row[gwCol]),
-      gl:     toInt(row[glCol]),
-      gd:     toInt(row[gdCol]),
+      win:  toInt(row[rankCol + 2]),
+      loss: toInt(row[rankCol + 4]),
+      gw:   toInt(row[rankCol + 5]),
+      gl:   toInt(row[rankCol + 6]),
+      gd:   toInt(row[rankCol + 7]),
     });
   }
-
   return teams;
 }
 
 /* ---------------- Rendering ---------------- */
-function renderRows(teams){
-  const container = document.getElementById('rows');
+function escapeHTML(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+const show = v => (v === null || v === undefined ? '–' : v);
+
+/** Shrink a team name's font until it fits its cell. */
+function fitTeamNames(container){
+  container.querySelectorAll('.cell--team').forEach(cell => {
+    const name = cell.querySelector('.team-name');
+    if(!name) return;
+    name.style.fontSize = '';
+    let size = parseFloat(getComputedStyle(name).fontSize);
+    let guard = 40;
+    while(cell.scrollWidth > cell.clientWidth && size > 16 && guard--){
+      size -= 2;
+      name.style.fontSize = size + 'px';
+    }
+  });
+}
+
+function renderRows(containerId, teams){
+  const container = document.getElementById(containerId);
   container.innerHTML = '';
 
   teams.forEach(t => {
     const row = document.createElement('div');
     row.className = 'row row--data';
     row.setAttribute('role', 'row');
-
-    const gd = t.gd;
-    const gdText = gd === null ? '–' : `${gd}`;
-
     row.innerHTML = `
-      <div class="cell cell--rank" role="cell">${t.rank ?? ''}</div>
-      <div class="cell cell--team" role="cell">${escapeHTML(t.team)}</div>
-      <div class="cell cell--points" role="cell">${t.points ?? '–'}</div>
-      <div class="cell cell--wl" role="cell">${t.win ?? '–'} - ${t.loss ?? '–'}</div>
-      <div class="cell cell--stat" role="cell">${t.gw ?? '–'}</div>
-      <div class="cell cell--stat" role="cell">${t.gl ?? '–'}</div>
-      <div class="cell cell--stat" role="cell">${gdText}</div>
+      <div class="cell cell--team" role="cell">
+        <span class="rk">${t.rank ?? ''}</span>
+        <span class="dot">.</span>
+        <span class="team-name">${escapeHTML(t.team || '')}</span>
+      </div>
+      <div class="cell cell--wl" role="cell">${show(t.win)} - ${show(t.loss)}</div>
+      <div class="cell cell--stat" role="cell">${show(t.gw)}</div>
+      <div class="cell cell--stat" role="cell">${show(t.gl)}</div>
+      <div class="cell cell--stat" role="cell">${show(t.gd)}</div>
     `;
     container.appendChild(row);
   });
+  fitTeamNames(container);
 }
 
-function escapeHTML(str){
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
+function placeholderTeams(){
+  return Array.from({ length: PLACEHOLDER_ROWS }, (_, i) =>
+    ({ rank: i + 1, team: '', win: 0, loss: 0, gw: 0, gl: 0, gd: 0 }));
 }
 
 function setStatus(msg, isError){
@@ -168,39 +199,51 @@ function setStatus(msg, isError){
 }
 
 /* ---------------- Data fetch ---------------- */
-async function fetchStandings(cfg){
-  const id = extractSheetId(cfg.sheetId);
-  if(!id){
-    throw new Error('No Google Sheet configured yet. Click the gear icon to add one.');
-  }
+async function fetchTab(sheetId, sheetName){
   const url =
-    `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv` +
-    (cfg.sheetName ? `&sheet=${encodeURIComponent(cfg.sheetName)}` : '');
+    `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv` +
+    (sheetName ? `&sheet=${encodeURIComponent(sheetName)}` : '');
 
   const res = await fetch(url, { cache: 'no-store' });
   if(!res.ok){
-    throw new Error(`Sheet request failed (${res.status}). Check sharing settings & tab name.`);
+    throw new Error(`Tab "${sheetName}" request failed (${res.status}). Check sharing settings & tab name.`);
   }
   const text = await res.text();
-  const rows = parseCSV(text);
-  return extractStandings(rows);
+  try {
+    return extractStandings(parseCSV(text));
+  } catch(err){
+    throw new Error(`Tab "${sheetName}": ${err.message}`);
+  }
 }
 
 let refreshTimer = null;
 
 async function refresh(cfg){
-  try{
-    const teams = await fetchStandings(cfg);
-    if(!teams.length){
-      setStatus('No standings rows found yet.', false);
-    } else {
-      setStatus('');
-    }
-    renderRows(teams);
-  }catch(err){
-    console.error(err);
-    setStatus(err.message || 'Could not load standings.', true);
+  const id = extractSheetId(cfg.sheetId);
+  if(!id){
+    setStatus('No Google Sheet configured yet. Click the gear icon to add one.', true);
+    return;
   }
+
+  const jobs = [
+    { name: cfg.sheetNameA, target: 'rowsA' },
+    { name: cfg.sheetNameB, target: 'rowsB' }
+  ];
+
+  // Fetch both tabs in parallel; one failing must not blank the other.
+  const results = await Promise.allSettled(jobs.map(j => fetchTab(id, j.name)));
+
+  const errors = [];
+  results.forEach((res, i) => {
+    if(res.status === 'fulfilled'){
+      renderRows(jobs[i].target, res.value.length ? res.value : placeholderTeams());
+    } else {
+      console.error(res.reason);
+      errors.push(res.reason.message || 'Could not load standings.');
+    }
+  });
+
+  setStatus(errors.join('  |  '), errors.length > 0);
 }
 
 function scheduleRefresh(cfg){
@@ -209,24 +252,35 @@ function scheduleRefresh(cfg){
   refreshTimer = setInterval(() => refresh(cfg), seconds * 1000);
 }
 
+/* ---------------- Fit 1920x1080 stage to the window ---------------- */
+function fitStage(){
+  const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  document.getElementById('stage').style.setProperty('--scale', scale);
+}
+
 /* ---------------- Settings UI ---------------- */
 function applyCosmeticConfig(cfg){
-  document.getElementById('weekDay').textContent   = cfg.weekDay   || DEFAULT_CONFIG.weekDay;
-  document.getElementById('division').textContent  = cfg.division || DEFAULT_CONFIG.division;
+  document.getElementById('division').textContent    = cfg.division || DEFAULT_CONFIG.division;
+  document.getElementById('groupALabel').textContent = cfg.groupA   || DEFAULT_CONFIG.groupA;
+  document.getElementById('groupBLabel').textContent = cfg.groupB   || DEFAULT_CONFIG.groupB;
 }
 
 function initSettingsUI(cfg){
   const btn   = document.getElementById('settingsBtn');
   const panel = document.getElementById('settingsPanel');
   const idIn  = document.getElementById('cfgSheetId');
-  const nameIn= document.getElementById('cfgSheetName');
-  const weekDayIn  = document.getElementById('cfgWeekDay');
+  const nameAIn = document.getElementById('cfgSheetNameA');
+  const nameBIn = document.getElementById('cfgSheetNameB');
+  const groupAIn = document.getElementById('cfgGroupA');
+  const groupBIn = document.getElementById('cfgGroupB');
   const divisionIn = document.getElementById('cfgDivision');
-  const refreshIn = document.getElementById('cfgRefresh');
+  const refreshIn  = document.getElementById('cfgRefresh');
 
   idIn.value = cfg.sheetId;
-  nameIn.value = cfg.sheetName;
-  weekDayIn.value = cfg.weekDay;
+  nameAIn.value = cfg.sheetNameA;
+  nameBIn.value = cfg.sheetNameB;
+  groupAIn.value = cfg.groupA;
+  groupBIn.value = cfg.groupB;
   divisionIn.value = cfg.division;
   refreshIn.value = cfg.refreshSeconds;
 
@@ -246,8 +300,10 @@ function initSettingsUI(cfg){
   document.getElementById('cfgSave').addEventListener('click', () => {
     const newCfg = {
       sheetId: idIn.value.trim(),
-      sheetName: nameIn.value.trim() || DEFAULT_CONFIG.sheetName,
-      weekDay: weekDayIn.value.trim() || DEFAULT_CONFIG.weekDay,
+      sheetNameA: nameAIn.value.trim() || DEFAULT_CONFIG.sheetNameA,
+      sheetNameB: nameBIn.value.trim() || DEFAULT_CONFIG.sheetNameB,
+      groupA: groupAIn.value.trim() || DEFAULT_CONFIG.groupA,
+      groupB: groupBIn.value.trim() || DEFAULT_CONFIG.groupB,
       division: divisionIn.value.trim() || DEFAULT_CONFIG.division,
       refreshSeconds: Number(refreshIn.value) || DEFAULT_CONFIG.refreshSeconds
     };
@@ -265,9 +321,25 @@ function initSettingsUI(cfg){
 /* ---------------- Boot ---------------- */
 (function init(){
   const cfg = loadConfig();
+  fitStage();
+  window.addEventListener('resize', fitStage);
+
   applyCosmeticConfig(cfg);
+  renderRows('rowsA', placeholderTeams());   // empty board shown until data arrives
+  renderRows('rowsB', placeholderTeams());
   initSettingsUI(cfg);
-  setStatus('Loading standings…', false);
-  refresh(cfg);
-  scheduleRefresh(cfg);
+
+  if(extractSheetId(cfg.sheetId)){
+    setStatus('Loading standings…', false);
+    refresh(cfg);
+    scheduleRefresh(cfg);
+  }
+
+  // Re-fit names once web fonts finish loading (widths change).
+  if(document.fonts && document.fonts.ready){
+    document.fonts.ready.then(() => {
+      fitTeamNames(document.getElementById('rowsA'));
+      fitTeamNames(document.getElementById('rowsB'));
+    });
+  }
 })();
