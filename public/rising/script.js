@@ -1,9 +1,14 @@
 /* ============================================================
    CTVS Leaderboard — Google Sheets powered broadcast graphic
-   Reads TWO tabs (Group A / Group B) from one Google Sheet.
-   Each tab uses the same layout as "LEADERBOARD - PREMIER":
+   Reads ONE tab that holds every group, stacked vertically:
 
-        Rank | Team | W | – | L | GW | GL | GD
+     RISING DIVISION - GROUP A - STANDINGS      <- merged banner
+     RK | PLAYER | W - L | | GW | GL | GD | H2H/TB
+     1  | ...
+     RISING DIVISION - GROUP B - STANDINGS      <- merged banner
+     ...
+
+   The banner decides which group the table underneath belongs to.
    ============================================================ */
 
 const STORAGE_KEY = 'ctvs-standings-config-rising';
@@ -11,8 +16,8 @@ const PLACEHOLDER_ROWS = 4;
 
 const DEFAULT_CONFIG = {
   sheetId: '',
-  sheetNameA: 'LEADERBOARD - GROUP A',
-  sheetNameB: 'LEADERBOARD - GROUP B',
+  sheetName: 'RISING - STANDINGS (6)',
+  sheetGid: '',
   groupA: 'Group A',
   groupB: 'Group B',
   division: 'Rising Division',
@@ -73,17 +78,19 @@ function parseCSV(text){
 }
 
 /* ---------------- Standings extraction ----------------
-   Layout of every leaderboard tab (same as LEADERBOARD - PREMIER):
+   The tab is scanned top to bottom. A "banner" row (a merged cell whose
+   text contains STANDINGS, e.g. "RISING DIVISION - GROUP A - STANDINGS")
+   selects the group that the rows below it belong to, until the next
+   banner. Banners without a group letter (WILDCARD, TIEBREAKING
+   CRITERIA...) switch collection off, so those tables are ignored.
 
-     col:  c     c+1   c+2  c+3  c+4  c+5  c+6  c+7
-           Rank  Team  W    –    L    GW   GL   GD
+   Standings rows are recognised by their shape (header text is not relied
+   on, since Google's CSV export can swallow header cells):
 
-   Header text is NOT relied on (Google's CSV export can swallow header
-   cells that sit in numeric columns). Instead we look for the first row
-   that "looks like" a standings row — numeric rank, a team name, then
-   numeric W / L / GW / GL / GD — and read downward from there until the
-   block ends. Extra columns to the left, or the helper table to the
-   right (Buchholz etc.), are ignored. */
+     col:  c     c+1     c+2  c+3  c+4  c+5  c+6  c+7
+           Rank  Player  W    -    L    GW   GL   GD
+
+   Extra columns to the left or right (H2H/TB notes etc.) are ignored. */
 const isIntLike = v => /^-?\d+(\.0+)?$/.test(String(v ?? '').trim());
 const toInt = v => {
   const n = parseInt(String(v ?? '').replace(/[^\d-]/g, ''), 10);
@@ -101,40 +108,83 @@ function looksLikeStandingsRow(row, c){
          isIntLike(row[c + 7]);              // GD
 }
 
-function extractStandings(rows){
-  let startRow = -1;
-  let rankCol = -1;
+/** Returns the text of a banner row, or null if the row is not a banner. */
+function bannerText(row){
+  const cells = row.map(v => String(v ?? '').trim()).filter(Boolean);
+  if(cells.length !== 1) return null;           // banners are a single merged cell
+  const text = cells[0];
+  if(isIntLike(text)) return null;
+  return /STANDINGS|TIEBREAK/i.test(text) ? text : null;
+}
 
-  outer:
-  for(let r = 0; r < rows.length; r++){
-    const row = rows[r];
-    for(let c = 0; c < row.length; c++){
-      if(looksLikeStandingsRow(row, c)){ startRow = r; rankCol = c; break outer; }
+/** "RISING DIVISION - GROUP B - STANDINGS" -> "B"; no group -> null. */
+function groupFromBanner(text){
+  const m = text.match(/\bGROUP\s*([A-Z0-9]+)\b/i);
+  return m ? m[1].toUpperCase() : null;
+}
+
+/** Pulls one standings row out of a CSV row, or null if it isn't one. */
+function readStandingsRow(row){
+  for(let c = 0; c < row.length; c++){
+    if(looksLikeStandingsRow(row, c)){
+      return {
+        rank: toInt(row[c]),
+        team: String(row[c + 1] ?? '').trim(),
+        win:  toInt(row[c + 2]),
+        loss: toInt(row[c + 4]),
+        gw:   toInt(row[c + 5]),
+        gl:   toInt(row[c + 6]),
+        gd:   toInt(row[c + 7]),
+      };
     }
   }
+  return null;
+}
 
-  if(startRow === -1){
-    throw new Error('Could not find standings rows (Rank, Team, W, –, L, GW, GL, GD).');
-  }
+/** Returns { A: [teams], B: [teams], ... } keyed by group letter.
 
-  const teams = [];
-  for(let r = startRow; r < rows.length; r++){
-    const row = rows[r];
-    const rank = toInt(row[rankCol]);
-    const team = String(row[rankCol + 1] ?? '').trim();
-    if(rank === null || !team) break; // end of the standings block
+    1) Banner mode: a banner row selects the group for the rows below it.
+    2) Positional fallback: Google's gviz CSV export types each column by its
+       majority content, so text banners sitting in the numeric Rank column
+       can come back EMPTY. When no banner is readable, tables are told apart
+       by position instead: the first table is Group A, the next one Group B,
+       and so on (a new table starts whenever the rank resets or a non-data
+       row such as a banner/header interrupts the rows). */
+function extractGroups(rows){
+  const groups = {};
+  let sawBanner = false;
+  let current = null;
 
-    teams.push({
-      rank,
-      team,
-      win:  toInt(row[rankCol + 2]),
-      loss: toInt(row[rankCol + 4]),
-      gw:   toInt(row[rankCol + 5]),
-      gl:   toInt(row[rankCol + 6]),
-      gd:   toInt(row[rankCol + 7]),
-    });
-  }
-  return teams;
+  rows.forEach(row => {
+    const banner = bannerText(row);
+    if(banner !== null){
+      sawBanner = true;
+      current = groupFromBanner(banner);
+      if(current && !groups[current]) groups[current] = [];
+      return;
+    }
+    if(!current) return;
+    const t = readStandingsRow(row);
+    if(t) groups[current].push(t);
+  });
+
+  if(sawBanner && Object.values(groups).some(g => g.length)) return groups;
+
+  // ---- positional fallback ----
+  const byPos = {};
+  let idx = -1, inTable = false, lastRank = Infinity;
+  rows.forEach(row => {
+    const t = readStandingsRow(row);
+    if(!t){ inTable = false; return; }
+    if(!inTable || t.rank <= lastRank){
+      idx++;
+      byPos[String.fromCharCode(65 + idx)] = [];
+    }
+    inTable = true;
+    lastRank = t.rank;
+    byPos[String.fromCharCode(65 + idx)].push(t);
+  });
+  return byPos;
 }
 
 /* ---------------- Rendering ---------------- */
@@ -199,21 +249,20 @@ function setStatus(msg, isError){
 }
 
 /* ---------------- Data fetch ---------------- */
-async function fetchTab(sheetId, sheetName){
-  const url =
-    `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv` +
-    (sheetName ? `&sheet=${encodeURIComponent(sheetName)}` : '');
+async function fetchGroups(cfg, sheetId){
+  // With a tab gid, use the plain CSV export: it returns every cell as-is
+  // (banners included). Otherwise use gviz, which looks the tab up by name.
+  const gid = String(cfg.sheetGid ?? '').trim();
+  const url = gid
+    ? `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${encodeURIComponent(gid)}`
+    : `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv` +
+      (cfg.sheetName ? `&sheet=${encodeURIComponent(cfg.sheetName)}` : '');
 
   const res = await fetch(url, { cache: 'no-store' });
   if(!res.ok){
-    throw new Error(`Tab "${sheetName}" request failed (${res.status}). Check sharing settings & tab name.`);
+    throw new Error(`Tab "${cfg.sheetName}" request failed (${res.status}). Check sharing settings & tab name.`);
   }
-  const text = await res.text();
-  try {
-    return extractStandings(parseCSV(text));
-  } catch(err){
-    throw new Error(`Tab "${sheetName}": ${err.message}`);
-  }
+  return extractGroups(parseCSV(await res.text()));
 }
 
 let refreshTimer = null;
@@ -225,25 +274,24 @@ async function refresh(cfg){
     return;
   }
 
-  const jobs = [
-    { name: cfg.sheetNameA, target: 'rowsA' },
-    { name: cfg.sheetNameB, target: 'rowsB' }
-  ];
+  try {
+    const groups = await fetchGroups(cfg, id);
+    const targets = { A: 'rowsA', B: 'rowsB' };
+    const missing = [];
 
-  // Fetch both tabs in parallel; one failing must not blank the other.
-  const results = await Promise.allSettled(jobs.map(j => fetchTab(id, j.name)));
+    Object.entries(targets).forEach(([letter, target]) => {
+      const teams = groups[letter];
+      if(!teams || !teams.length) missing.push(`Group ${letter}`);
+      renderRows(target, teams && teams.length ? teams : placeholderTeams());
+    });
 
-  const errors = [];
-  results.forEach((res, i) => {
-    if(res.status === 'fulfilled'){
-      renderRows(jobs[i].target, res.value.length ? res.value : placeholderTeams());
-    } else {
-      console.error(res.reason);
-      errors.push(res.reason.message || 'Could not load standings.');
-    }
-  });
-
-  setStatus(errors.join('  |  '), errors.length > 0);
+    setStatus(missing.length
+      ? `No standings found for ${missing.join(' / ')} — check the tab name / gid and that the tables list players.`
+      : '', missing.length > 0);
+  } catch(err){
+    console.error(err);
+    setStatus(err.message || 'Could not load standings.', true);
+  }
 }
 
 function scheduleRefresh(cfg){
@@ -269,16 +317,16 @@ function initSettingsUI(cfg){
   const btn   = document.getElementById('settingsBtn');
   const panel = document.getElementById('settingsPanel');
   const idIn  = document.getElementById('cfgSheetId');
-  const nameAIn = document.getElementById('cfgSheetNameA');
-  const nameBIn = document.getElementById('cfgSheetNameB');
+  const nameIn = document.getElementById('cfgSheetName');
+  const gidIn  = document.getElementById('cfgSheetGid');
   const groupAIn = document.getElementById('cfgGroupA');
   const groupBIn = document.getElementById('cfgGroupB');
   const divisionIn = document.getElementById('cfgDivision');
   const refreshIn  = document.getElementById('cfgRefresh');
 
   idIn.value = cfg.sheetId;
-  nameAIn.value = cfg.sheetNameA;
-  nameBIn.value = cfg.sheetNameB;
+  nameIn.value = cfg.sheetName;
+  gidIn.value = cfg.sheetGid;
   groupAIn.value = cfg.groupA;
   groupBIn.value = cfg.groupB;
   divisionIn.value = cfg.division;
@@ -300,8 +348,8 @@ function initSettingsUI(cfg){
   document.getElementById('cfgSave').addEventListener('click', () => {
     const newCfg = {
       sheetId: idIn.value.trim(),
-      sheetNameA: nameAIn.value.trim() || DEFAULT_CONFIG.sheetNameA,
-      sheetNameB: nameBIn.value.trim() || DEFAULT_CONFIG.sheetNameB,
+      sheetName: nameIn.value.trim() || DEFAULT_CONFIG.sheetName,
+      sheetGid: gidIn.value.trim(),
       groupA: groupAIn.value.trim() || DEFAULT_CONFIG.groupA,
       groupB: groupBIn.value.trim() || DEFAULT_CONFIG.groupB,
       division: divisionIn.value.trim() || DEFAULT_CONFIG.division,
