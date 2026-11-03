@@ -73,17 +73,19 @@
     </label>
 
     <label>
-      Group A — tab name &amp; label
-      <span class="settings-row">
-        <input id="cfgSheetNameA" type="text" placeholder="LEADERBOARD - GROUP A">
-        <input id="cfgGroupA" type="text" placeholder="Group A">
-      </span>
+      Sheet tab name (holds both groups)
+      <input id="cfgSheetName" type="text" placeholder="RISING - STANDINGS (6)">
     </label>
 
     <label>
-      Group B — tab name &amp; label
+      Tab gid (optional — the number after <code>gid=</code> in the sheet URL)
+      <input id="cfgSheetGid" type="text" placeholder="e.g. 123456789">
+    </label>
+
+    <label>
+      Group labels (shown on the board)
       <span class="settings-row">
-        <input id="cfgSheetNameB" type="text" placeholder="LEADERBOARD - GROUP B">
+        <input id="cfgGroupA" type="text" placeholder="Group A">
         <input id="cfgGroupB" type="text" placeholder="Group B">
       </span>
     </label>
@@ -105,9 +107,10 @@
 
     <p class="settings-hint">
       The sheet must be shared as <strong>“Anyone with the link — Viewer”</strong>.
-      Both tabs use the same layout as the <strong>LEADERBOARD - PREMIER</strong> tab:
-      Rank, Team, W, –, L, GW, GL, GD (standings start at the first row whose
-      rank is a number).
+      One tab holds every group: a banner such as
+      <strong>RISING DIVISION - GROUP A - STANDINGS</strong> selects the group, and
+      the table below it (Rank, Player, W, –, L, GW, GL, GD) fills that group
+      until the next banner.
     </p>
   </div>
 
