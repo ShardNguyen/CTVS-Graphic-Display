@@ -13,7 +13,7 @@ Live broadcast graphics for the **Classic Tetris Vietnam Series (CTVS)**. A smal
 How it works:
 
 - `app.js` is a minimal Express server that serves the `public/` folder as static files. There is no database and no server-side API.
-- Each page fetches its Google Sheet tab as CSV (`https://docs.google.com/spreadsheets/d/<ID>/gviz/tq?tqx=out:csv&sheet=<TAB>`), parses it in the browser, and re-renders every N seconds (default 15).
+- Each page fetches its Google Sheet tab as CSV (`https://docs.google.com/spreadsheets/d/<ID>/gviz/tq?tqx=out:csv&sheet=<TAB>`), parses it in the browser, and re-renders every N seconds.
 - Settings (sheet ID, tab names, labels, refresh interval) are entered in an on-page settings panel and saved in the browser's `localStorage`, separately for each page.
 
 ## Dependencies
@@ -32,10 +32,10 @@ How it works:
 
 - A Google Sheet shared as **"Anyone with the link: Viewer"**
 
-**Fonts** (bundled in each page's `fonts/` folder, no install needed)
+**Fonts** (bundled in `fonts/` folder, no install needed)
 
 - Montserrat and Source Code Pro (SIL Open Font License)
-- Name Smile: licensed for **non-commercial use only**. See `public/*/fonts/name_smile/` for the license and a link to buy a commercial one.
+- Name Smile: licensed for **non-commercial use only**. See `public/assets/fonts/name_smile/` for the license and a link to buy a commercial one.
 
 ## Installation
 
@@ -46,8 +46,6 @@ cd "CTVS Web Graphics Display"
 # 2. Install dependencies
 npm install
 ```
-
-> **Note:** the `package.json` in this archive has a trailing comma after the `"test"` script (`"test": "...",` followed by `}`), which is invalid JSON and makes `npm install` fail with an `EJSONPARSE` error. Delete that comma before installing.
 
 ## Usage
 
@@ -71,45 +69,11 @@ The server listens on **port 3000**. The port is hard-coded in `app.js`; edit `a
 2. Open a page. On first run the settings panel opens automatically. Later, click the **⚙** button or press **S** to open it (**Esc** closes it).
 3. Paste the full sheet URL (or just the sheet ID), set the tab name(s) and labels, and click **Save & reload**.
 
-| Setting | Premier | Rising | Schedule |
-|---------|---------|--------|----------|
-| Google Sheet URL or ID | ✓ | ✓ | ✓ |
-| Tab name | `LEADERBOARD - PREMIER` | `LEADERBOARD - GROUP A` and `LEADERBOARD - GROUP B` | `SCHEDULE - PREMIER` |
-| Week / day label | ✓ (`Week 1 Day 1`) | – | ✓ |
-| Division label | ✓ | ✓ | sub-title label |
-| Group labels | – | ✓ | – |
-| Refresh interval (min. 3 s) | ✓ (15 s) | ✓ (15 s) | ✓ (15 s) |
-
 Settings are stored per page in the browser (`localStorage`). Each page, and each browser or OBS source, therefore needs to be configured once.
 
 ### 4. Use it in OBS
 
 Add a **Browser Source** pointing at one of the URLs above, with a 1920×1080 size. Configure it through OBS's "Interact" window on the source. Settings are stored in the browser profile that OBS uses, so setting them in a regular browser will not carry over. Close the settings panel before going live.
-
-## Spreadsheet layout
-
-**Leaderboard tabs** (Premier, Rising Group A/B). Standings are read from a block with these columns, in this order:
-
-```
-Rank | Team | W | - | L | GW | GL | GD
-```
-
-- Premier finds the header by locating the `W - L` cell (or `GW` as a fallback) and reads the columns around it.
-- Rising ignores header text and starts at the first row with a numeric rank, a name and numeric W, L, GW, GL and GD.
-- Reading stops at the first row with no rank or no team name. Extra columns to the left or right (for example tiebreak helper tables) are ignored.
-
-**Schedule tab.** Data is read starting from a cell containing the word `SCHEDULE`. Each match row below it uses five consecutive columns starting at that cell's column:
-
-```
-Match ID | Division / Group | Player 1 | Time | Player 2
-```
-
-- Rows missing any of the five fields (such as a "Week 1 Day 1" label row) are skipped.
-- Only the first **four** valid rows are displayed, one per box. A blank row after the data ends the list.
-- A division containing "Premier" shows Best-of-5 and one containing "Rising" shows Best-of-3.
-- Times like `20:00:00` are shown as `20:00`. Names like `2nd Seed` render with a superscript ordinal.
-
-A sample workbook with these layouts is in `sac/CTVS.xlsx`.
 
 ## Project structure
 
@@ -117,15 +81,13 @@ A sample workbook with these layouts is in `sac/CTVS.xlsx`.
 .
 ├── app.js                  # Express static server (port 3000)
 ├── package.json
-├── public/
-│   ├── premier/            # Premier Division leaderboard (index.html, style.css, script.js, fonts/)
-│   ├── rising/             # Rising Division, two-group leaderboard
-│   └── schedule/           # Match schedule
-└── sac/                    # Working files, not served: sample workbook (CTVS.xlsx),
-                            # design mock-ups, and an older copy of the schedule page
+└── public/
+    ├── assets/
+    │   └── fonts/          # Folder containing all fonts used in the project
+    ├── premier/            # Premier Division leaderboard
+    ├── rising/             # Rising Division, two-group leaderboard
+    └── schedule/           # Match schedule
 ```
-
-`sac/` is listed in `.gitignore`.
 
 ## Troubleshooting
 
