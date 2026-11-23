@@ -40,7 +40,7 @@ html,body{
   margin:0;
   width:100%;
   height:100%;
-  background:#000;
+  background-color: transparent;
   overflow:hidden;
 }
 
@@ -58,33 +58,18 @@ html,body{
   overflow:hidden;
   color:var(--white);
   font-family: var(--font-mono);
-  background:
-    radial-gradient(ellipse 62% 78% at 50% 58%,
-      #03111a 0%, #04151e 38%, #0a3550 62%, #0b3a56 74%, #083049 88%, #072a40 100%);
-}
-
-/* faint vertical striping that fades out toward the centre */
-.bg-stripes{
-  position:absolute;
-  inset:0;
-  background:
-    repeating-linear-gradient(90deg,
-      rgba(97,203,244,0) 0 59px,
-      rgba(97,203,244,.09) 59px 61px);
-  -webkit-mask-image: radial-gradient(ellipse 55% 80% at 50% 58%, transparent 25%, #000 85%);
-          mask-image: radial-gradient(ellipse 55% 80% at 50% 58%, transparent 25%, #000 85%);
+  background-color: transparent;
 }
 
 /* ---------- top bar ---------- */
 .top-bar{
-  position:absolute;
-  left:0; top:0;
-  width:100%;
-  height:211px;
-  background:
-    radial-gradient(ellipse 40% 90% at 50% 110%, rgba(10,84,112,.55) 0%, transparent 70%),
-    linear-gradient(180deg, #000 0%, #02090d 45%, #06202c 100%);
-  border-bottom: 2px solid #2f8fbd;
+  position:relative;
+  z-index:2;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding-top: 14.9vh;
+  text-align:center;
 }
 
 .title-row{
@@ -123,26 +108,38 @@ html,body{
 
 /* division pill straddling the bottom rule of the top bar */
 .meta-row{
-  position:absolute;
-  left:0; top:188px;
-  width:100%;
-  height:43px;
-  display:flex;
-  justify-content:center;
-  z-index:2;
-}
-.pill{
+  position:relative;
   display:flex;
   align-items:center;
-  height:43px;
-  padding:0 32px;
+  justify-content:center;
+  gap: clamp(14px, 2vw, 28px);
+  width:100%;
+  height: clamp(38px, 5vh, 54px);
+  margin-top: clamp(14px, 2.4vh, 26px);
+}
+
+.meta-row::before{
+  content:'';
+  position:absolute;
+  left: calc(-1 * clamp(24px,4vw,64px));
+  right: calc(-1 * clamp(24px,4vw,64px));
+  top:50%;
+  transform: translateY(-50%);
+  height:1px;
+  background: var(--blue);
+  opacity:.55;
+}
+
+.pill{
+  position:relative;
+  z-index:1;
   background: var(--blue);
   color: var(--pill-text);
-  font-family: var(--font-mono);
-  font-weight:500;
-  font-size:26px;
-  letter-spacing:.07em;
-  white-space:nowrap;
+  font-family: 'Source Code Pro', system-ui, sans-serif;
+  font-weight:700;
+  font-size: clamp(13px, 1.25vw, 64px);
+  letter-spacing:.02em;
+  padding: .55em 1em;
 }
 
 /* ---------- tables ---------- */

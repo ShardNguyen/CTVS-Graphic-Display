@@ -68,7 +68,7 @@
 html,body{
   margin:0;
   height:100%;
-  background:#000;
+  background-color: transparent;
 }
 
 .stage{
@@ -79,9 +79,7 @@ html,body{
   overflow:hidden;
   display:flex;
   flex-direction:column;
-  background:
-    radial-gradient(ellipse 60% 50% at 50% 4%, var(--bg-glow) 0%, transparent 62%),
-    linear-gradient(160deg, var(--bg-page) 0%, var(--bg-deep) 60%, #010a0e 100%);
+  background-color: transparent;
   color:var(--white);
   font-family: var(--font-mono);
 }
@@ -178,7 +176,7 @@ html,body{
   width:50%;
   display:flex;
   flex-direction:column;
-  gap: clamp(16px, 3vh, 34px);
+  gap: 6.07vh;
 }
 
 .match-box{
@@ -203,7 +201,7 @@ html,body{
   justify-self:start;
   font-weight:500;
   letter-spacing:.03em;
-  font-size: clamp(14px, 0.95vw, 26px);
+  font-size: 1.5vw;
   white-space:nowrap;
 }
 
@@ -212,7 +210,7 @@ html,body{
   text-align:center;
   font-weight:700;
   letter-spacing:.03em;
-  font-size: clamp(16px, 1.25vw, 34px);
+  font-size: 1.5vw;
   white-space:nowrap;
 }
 
@@ -220,7 +218,7 @@ html,body{
   justify-self:end;
   font-weight:500;
   letter-spacing:.03em;
-  font-size: clamp(14px, 0.95vw, 26px);
+  font-size: 1.5vw;
   white-space:nowrap;
 }
 

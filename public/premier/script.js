@@ -7,7 +7,7 @@ const STORAGE_KEY = 'ctvs-standings-config-premier';
 const DEFAULT_CONFIG = {
   sheetId: '',
   sheetName: 'LEADERBOARD - PREMIER',
-  weekDay: 'Week 1 Day 1',
+  // weekDay: 'Week 1 Day 1',
   division: 'Premier Division',
   refreshSeconds: 15
 };
@@ -30,7 +30,7 @@ function saveConfig(cfg){
 function extractSheetId(input){
   if(!input) return '';
   const trimmed = input.trim();
-  const match = trimmed.match(/\/d\/([a-zA-Z0-9-_]+)/);
+  const match = trimmed.match(/\/d\/([a-zA-Z0-9-_]+)/); // Getting the sheet's id from full link
   if(match) return match[1];
   return trimmed;
 }
@@ -74,7 +74,13 @@ function extractStandings(rows){
   let headerRowIdx = -1;
   let wlCol = -1;
   const norm = v => (v || '').trim().toLowerCase().replace(/\s+/g, ' ');
-
+  // The norm above is actually a function that takes v as input
+  // If v is null (or anything equivalent to it) -> v = ''
+  // Then trim v, lowercase v
+  // Finally replace consecutive spaces (or tabs, enters) and replace them with one single space
+  
+  // Outer is just naming the outer loop
+  // This loop is finding the w-l cell
   outer:
   for(let r = 0; r < rows.length; r++){
     const row = rows[r];
@@ -82,16 +88,19 @@ function extractStandings(rows){
       if(norm(row[c]) === 'w - l'){
         headerRowIdx = r;
         wlCol = c;
-        break outer;
+        break outer; // This means breaking the whole outer loop
       }
     }
   }
-
+  
+  // Case when the w-l cell is not found
   if(wlCol === -1){
+    // This loop is finding the gd column
+    // Move 3 columns to the left to get w-l column
     outer2:
     for(let r = 0; r < rows.length; r++){
       for(let c = 0; c < rows[r].length; c++){
-        if(norm(rows[r][c]) === 'gw'){
+        if(norm(rows[r][c]) === 'gd'){
           headerRowIdx = r;
           wlCol = c - 3;
           break outer2;
@@ -99,11 +108,13 @@ function extractStandings(rows){
       }
     }
   }
-
+  
+  // Throw error if w-l column is too far left
   if(wlCol < 2){
     throw new Error('Could not find the "W - L" column header in the sheet.');
   }
-
+  
+  // Get corresponding columns base on w-l columns
   const rankCol   = wlCol - 2;
   const teamCol   = wlCol - 1;
   const winCol    = wlCol;
@@ -112,19 +123,22 @@ function extractStandings(rows){
   const glCol     = wlCol + 4;
   const gdCol     = wlCol + 5;
 
+  // Parse int function
   const toInt = v => {
     const n = parseInt(String(v).replace(/[^\d-]/g, ''), 10);
     return Number.isFinite(n) ? n : null;
   };
 
   const teams = [];
+  
+  // Get every info for a player / team
   for(let r = headerRowIdx + 1; r < rows.length; r++){
     const row = rows[r];
     const rank = toInt(row[rankCol]);
     const team = (row[teamCol] || '').trim();
 
     if(rank === null || !team) break; // end of the standings block
-
+    
     teams.push({
       rank,
       team,
@@ -184,6 +198,8 @@ async function fetchStandings(cfg){
   if(!id){
     throw new Error('No Google Sheet configured yet. Click the gear icon to add one.');
   }
+  // gviz/tq means Google Visualization API Query Language's endpoint
+  // tqx=out:csv means it outputs as a csv file
   const url =
     `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv` +
     (cfg.sheetName ? `&sheet=${encodeURIComponent(cfg.sheetName)}` : '');
@@ -222,7 +238,7 @@ function scheduleRefresh(cfg){
 
 /* ---------------- Settings UI ---------------- */
 function applyCosmeticConfig(cfg){
-  document.getElementById('weekDay').textContent   = cfg.weekDay   || DEFAULT_CONFIG.weekDay;
+  // document.getElementById('weekDay').textContent   = cfg.weekDay   || DEFAULT_CONFIG.weekDay;
   document.getElementById('division').textContent  = cfg.division || DEFAULT_CONFIG.division;
 }
 
@@ -231,13 +247,13 @@ function initSettingsUI(cfg){
   const panel = document.getElementById('settingsPanel');
   const idIn  = document.getElementById('cfgSheetId');
   const nameIn= document.getElementById('cfgSheetName');
-  const weekDayIn  = document.getElementById('cfgWeekDay');
+  // const weekDayIn  = document.getElementById('cfgWeekDay');
   const divisionIn = document.getElementById('cfgDivision');
   const refreshIn = document.getElementById('cfgRefresh');
 
   idIn.value = cfg.sheetId;
   nameIn.value = cfg.sheetName;
-  weekDayIn.value = cfg.weekDay;
+  // weekDayIn.value = cfg.weekDay;
   divisionIn.value = cfg.division;
   refreshIn.value = cfg.refreshSeconds;
 
@@ -258,7 +274,7 @@ function initSettingsUI(cfg){
     const newCfg = {
       sheetId: idIn.value.trim(),
       sheetName: nameIn.value.trim() || DEFAULT_CONFIG.sheetName,
-      weekDay: weekDayIn.value.trim() || DEFAULT_CONFIG.weekDay,
+      // weekDay: weekDayIn.value.trim() || DEFAULT_CONFIG.weekDay,
       division: divisionIn.value.trim() || DEFAULT_CONFIG.division,
       refreshSeconds: Number(refreshIn.value) || DEFAULT_CONFIG.refreshSeconds
     };
