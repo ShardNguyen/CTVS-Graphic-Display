@@ -21,7 +21,7 @@
     </header>
 
 
-    <!-- two group tables, side by side -->
+    <!-- up to two group tables, side by side (one group = centered) -->
     <main class="board">
       <section class="table" id="tableA" role="table" aria-label="Group A standings">
         <div class="row row--head" role="row">
@@ -69,13 +69,29 @@
       <input id="cfgSheetGid" type="text" placeholder="e.g. 123456789">
     </label>
 
-    <label>
-      Group labels (shown on the board)
-      <span class="settings-row">
-        <input id="cfgGroupA" type="text" placeholder="Group A">
-        <input id="cfgGroupB" type="text" placeholder="Group B">
-      </span>
-    </label>
+    <fieldset class="settings-group">
+      <legend>Group 1 (left)</legend>
+      <label>
+        Group name (banner text to search for in the sheet)
+        <input id="cfgGroup1Name" type="text" placeholder="RISING DIVISION - GROUP A - STANDINGS">
+      </label>
+      <label>
+        Group label (shown on the website)
+        <input id="cfgGroup1Label" type="text" placeholder="Group A">
+      </label>
+    </fieldset>
+
+    <fieldset class="settings-group">
+      <legend>Group 2 (right) — leave the name empty to show only one group</legend>
+      <label>
+        Group name (banner text to search for in the sheet)
+        <input id="cfgGroup2Name" type="text" placeholder="RISING DIVISION - GROUP B - STANDINGS">
+      </label>
+      <label>
+        Group label (shown on the website)
+        <input id="cfgGroup2Label" type="text" placeholder="Group B">
+      </label>
+    </fieldset>
 
     <label>
       Division label
@@ -94,10 +110,11 @@
 
     <p class="settings-hint">
       The sheet must be shared as <strong>“Anyone with the link — Viewer”</strong>.
-      One tab holds every group: a banner such as
-      <strong>RISING DIVISION - GROUP A - STANDINGS</strong> selects the group, and
-      the table below it (Rank, Player, W, –, L, GW, GL, GD) fills that group
-      until the next banner.
+      One tab holds every group. The site looks for a banner matching
+      <strong>Group name</strong> (e.g. <strong>RISING DIVISION - GROUP A - STANDINGS</strong>)
+      and shows the table below it (RK, PLAYER, W - L, GW, GL, GD) under the
+      <strong>Group label</strong>. At most 2 groups are shown; with only one,
+      it is centered.
     </p>
   </div>
 

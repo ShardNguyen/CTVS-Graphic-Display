@@ -155,6 +155,11 @@ html,body{
 }
 
 .table{ flex:1 1 0; min-width:0; }
+.table[hidden]{ display:none; }
+
+/* only one group: keep it half-width and centered */
+.board--single{ justify-content:center; }
+.board--single .table{ flex:0 0 calc((100% - 70px) / 2); }
 
 .row{
   display:grid;
@@ -311,6 +316,18 @@ html,body{
   color:#fff;
   font-family: 'Segoe UI', system-ui, sans-serif;
   font-size:13px;
+}
+.settings-group{
+  margin:0 0 12px;
+  padding:8px 12px 0;
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:8px;
+}
+.settings-group legend{
+  padding:0 6px;
+  font-size:12px;
+  font-weight:600;
+  color:#eaf7fd;
 }
 .settings-row{ display:flex; gap:8px; }
 .settings-row input:first-child{ flex:2; }

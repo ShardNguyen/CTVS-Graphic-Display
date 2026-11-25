@@ -1,6 +1,6 @@
 /* ============================================================
    CTVS Leaderboard — Google Sheets powered broadcast graphic
-   Reads ONE tab that holds every group, stacked vertically:
+   Reads ONE tab that holds every group (max 2 shown), stacked vertically:
 
      RISING DIVISION - GROUP A - STANDINGS      <- merged banner
      RK | PLAYER | W - L | | GW | GL | GD | H2H/TB
@@ -8,7 +8,8 @@
      RISING DIVISION - GROUP B - STANDINGS      <- merged banner
      ...
 
-   The banner decides which group the table underneath belongs to.
+   Settings "Group name" is matched against the banner text; "Group label"
+   is what is displayed. One group configured = centered on the board.
    ============================================================ */
 
 const STORAGE_KEY = 'ctvs-standings-config-rising';
@@ -18,8 +19,10 @@ const DEFAULT_CONFIG = {
   sheetId: '',
   sheetName: 'RISING - STANDINGS (6)',
   sheetGid: '',
-  groupA: 'Group A',
-  groupB: 'Group B',
+  group1Name: 'RISING DIVISION - GROUP A - STANDINGS',
+  group1Label: 'Group A',
+  group2Name: 'RISING DIVISION - GROUP B - STANDINGS',
+  group2Label: 'Group B',
   division: 'Rising Division',
   refreshSeconds: 15
 };
@@ -28,7 +31,11 @@ function loadConfig(){
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if(!raw) return { ...DEFAULT_CONFIG };
-    return { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+    const saved = JSON.parse(raw);
+    // migrate settings saved by the older version (groupA / groupB labels)
+    if(saved.groupA && !saved.group1Label) saved.group1Label = saved.groupA;
+    if(saved.groupB && !saved.group2Label) saved.group2Label = saved.groupB;
+    return { ...DEFAULT_CONFIG, ...saved };
   } catch(e){
     return { ...DEFAULT_CONFIG };
   }
@@ -108,18 +115,26 @@ function looksLikeStandingsRow(row, c){
          isIntLike(row[c + 7]);              // GD
 }
 
-/** Returns the text of a banner row, or null if the row is not a banner. */
+/** Returns the text of a banner row, or null if the row is not a banner.
+    A banner is a row with exactly one non-empty cell holding text. */
 function bannerText(row){
   const cells = row.map(v => String(v ?? '').trim()).filter(Boolean);
   if(cells.length !== 1) return null;           // banners are a single merged cell
   const text = cells[0];
-  if(isIntLike(text)) return null;
-  return /STANDINGS|TIEBREAK/i.test(text) ? text : null;
+  return isIntLike(text) ? null : text;
+}
+
+const normalizeName = v => String(v ?? '').replace(/\s+/g, ' ').trim().toUpperCase();
+
+/** Does a banner's text match a configured "Group name"? (case/space-insensitive) */
+function bannerMatches(banner, name){
+  const b = normalizeName(banner), n = normalizeName(name);
+  return !!n && (b === n || b.includes(n));
 }
 
 /** "RISING DIVISION - GROUP B - STANDINGS" -> "B"; no group -> null. */
 function groupFromBanner(text){
-  const m = text.match(/\bGROUP\s*([A-Z0-9]+)\b/i);
+  const m = String(text ?? '').match(/\bGROUP\s*([A-Z0-9]+)\b/i);
   return m ? m[1].toUpperCase() : null;
 }
 
@@ -141,34 +156,33 @@ function readStandingsRow(row){
   return null;
 }
 
-/** Returns { A: [teams], B: [teams], ... } keyed by group letter.
+/** Returns an array (same order as `names`) with the players of each group.
 
-    1) Banner mode: a banner row selects the group for the rows below it.
+    1) Banner mode: the rows below a banner matching a group name belong to
+       that group, until the next banner.
     2) Positional fallback: Google's gviz CSV export types each column by its
        majority content, so text banners sitting in the numeric Rank column
-       can come back EMPTY. When no banner is readable, tables are told apart
-       by position instead: the first table is Group A, the next one Group B,
-       and so on (a new table starts whenever the rank resets or a non-data
-       row such as a banner/header interrupts the rows). */
-function extractGroups(rows){
-  const groups = {};
-  let sawBanner = false;
-  let current = null;
+       can come back EMPTY. When no banner matches, tables are told apart by
+       position (first table = Group A, next = Group B, ...) and each group
+       name is mapped through its "GROUP <letter>" text. */
+function extractGroups(rows, names){
+  const result = names.map(() => []);
+  let found = false;
+  let current = -1;
 
   rows.forEach(row => {
     const banner = bannerText(row);
     if(banner !== null){
-      sawBanner = true;
-      current = groupFromBanner(banner);
-      if(current && !groups[current]) groups[current] = [];
+      current = names.findIndex(n => bannerMatches(banner, n));
+      if(current >= 0) found = true;
       return;
     }
-    if(!current) return;
+    if(current < 0) return;
     const t = readStandingsRow(row);
-    if(t) groups[current].push(t);
+    if(t) result[current].push(t);
   });
 
-  if(sawBanner && Object.values(groups).some(g => g.length)) return groups;
+  if(found && result.some(g => g.length)) return result;
 
   // ---- positional fallback ----
   const byPos = {};
@@ -184,7 +198,7 @@ function extractGroups(rows){
     lastRank = t.rank;
     byPos[String.fromCharCode(65 + idx)].push(t);
   });
-  return byPos;
+  return names.map(n => byPos[groupFromBanner(n)] || []);
 }
 
 /* ---------------- Rendering ---------------- */
@@ -249,7 +263,7 @@ function setStatus(msg, isError){
 }
 
 /* ---------------- Data fetch ---------------- */
-async function fetchGroups(cfg, sheetId){
+async function fetchGroups(cfg, sheetId, names){
   // With a tab gid, use the plain CSV export: it returns every cell as-is
   // (banners included). Otherwise use gviz, which looks the tab up by name.
   const gid = String(cfg.sheetGid ?? '').trim();
@@ -262,7 +276,7 @@ async function fetchGroups(cfg, sheetId){
   if(!res.ok){
     throw new Error(`Tab "${cfg.sheetName}" request failed (${res.status}). Check sharing settings & tab name.`);
   }
-  return extractGroups(parseCSV(await res.text()));
+  return extractGroups(parseCSV(await res.text()), names);
 }
 
 let refreshTimer = null;
@@ -275,18 +289,22 @@ async function refresh(cfg){
   }
 
   try {
-    const groups = await fetchGroups(cfg, id);
-    const targets = { A: 'rowsA', B: 'rowsB' };
+    const slots = activeGroups(cfg);
+    if(!slots.length){
+      setStatus('No group configured. Open settings and fill in a Group name.', true);
+      return;
+    }
+    const groups = await fetchGroups(cfg, id, slots.map(g => g.name));
     const missing = [];
 
-    Object.entries(targets).forEach(([letter, target]) => {
-      const teams = groups[letter];
-      if(!teams || !teams.length) missing.push(`Group ${letter}`);
-      renderRows(target, teams && teams.length ? teams : placeholderTeams());
+    slots.forEach((g, i) => {
+      const teams = groups[i];
+      if(!teams || !teams.length) missing.push(g.label);
+      renderRows(g.rows, teams && teams.length ? teams : placeholderTeams());
     });
 
     setStatus(missing.length
-      ? `No standings found for ${missing.join(' / ')} — check the tab name / gid and that the tables list players.`
+      ? `No standings found for ${missing.join(' / ')} — check the Group name matches the sheet banner, and the tab name / gid.`
       : '', missing.length > 0);
   } catch(err){
     console.error(err);
@@ -307,10 +325,25 @@ function fitStage(){
 }
 
 /* ---------------- Settings UI ---------------- */
+/** The (max 2) groups that have a Group name, in order. */
+function activeGroups(cfg){
+  return [
+    { name: (cfg.group1Name || '').trim(), label: cfg.group1Label, fallback: 'Group 1', table: 'tableA', head: 'groupALabel', rows: 'rowsA' },
+    { name: (cfg.group2Name || '').trim(), label: cfg.group2Label, fallback: 'Group 2', table: 'tableB', head: 'groupBLabel', rows: 'rowsB' },
+  ].filter(g => g.name).map(g => ({ ...g, label: (g.label || '').trim() || g.fallback }));
+}
+
 function applyCosmeticConfig(cfg){
-  document.getElementById('division').textContent    = cfg.division || DEFAULT_CONFIG.division;
-  document.getElementById('groupALabel').textContent = cfg.groupA   || DEFAULT_CONFIG.groupA;
-  document.getElementById('groupBLabel').textContent = cfg.groupB   || DEFAULT_CONFIG.groupB;
+  document.getElementById('division').textContent = cfg.division || DEFAULT_CONFIG.division;
+
+  const slots = activeGroups(cfg);
+  ['tableA', 'tableB'].forEach(id => { document.getElementById(id).hidden = true; });
+  slots.forEach(g => {
+    document.getElementById(g.table).hidden = false;
+    document.getElementById(g.head).textContent = g.label;
+  });
+  // a single group is centered
+  document.querySelector('.board').classList.toggle('board--single', slots.length === 1);
 }
 
 function initSettingsUI(cfg){
@@ -319,16 +352,20 @@ function initSettingsUI(cfg){
   const idIn  = document.getElementById('cfgSheetId');
   const nameIn = document.getElementById('cfgSheetName');
   const gidIn  = document.getElementById('cfgSheetGid');
-  const groupAIn = document.getElementById('cfgGroupA');
-  const groupBIn = document.getElementById('cfgGroupB');
+  const g1NameIn  = document.getElementById('cfgGroup1Name');
+  const g1LabelIn = document.getElementById('cfgGroup1Label');
+  const g2NameIn  = document.getElementById('cfgGroup2Name');
+  const g2LabelIn = document.getElementById('cfgGroup2Label');
   const divisionIn = document.getElementById('cfgDivision');
   const refreshIn  = document.getElementById('cfgRefresh');
 
   idIn.value = cfg.sheetId;
   nameIn.value = cfg.sheetName;
   gidIn.value = cfg.sheetGid;
-  groupAIn.value = cfg.groupA;
-  groupBIn.value = cfg.groupB;
+  g1NameIn.value  = cfg.group1Name;
+  g1LabelIn.value = cfg.group1Label;
+  g2NameIn.value  = cfg.group2Name;
+  g2LabelIn.value = cfg.group2Label;
   divisionIn.value = cfg.division;
   refreshIn.value = cfg.refreshSeconds;
 
@@ -350,8 +387,10 @@ function initSettingsUI(cfg){
       sheetId: idIn.value.trim(),
       sheetName: nameIn.value.trim() || DEFAULT_CONFIG.sheetName,
       sheetGid: gidIn.value.trim(),
-      groupA: groupAIn.value.trim() || DEFAULT_CONFIG.groupA,
-      groupB: groupBIn.value.trim() || DEFAULT_CONFIG.groupB,
+      group1Name:  g1NameIn.value.trim(),      // empty = group not shown
+      group1Label: g1LabelIn.value.trim(),
+      group2Name:  g2NameIn.value.trim(),
+      group2Label: g2LabelIn.value.trim(),
       division: divisionIn.value.trim() || DEFAULT_CONFIG.division,
       refreshSeconds: Number(refreshIn.value) || DEFAULT_CONFIG.refreshSeconds
     };
