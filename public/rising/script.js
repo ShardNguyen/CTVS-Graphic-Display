@@ -222,7 +222,7 @@ function renderRows(containerId, teams){
     row.innerHTML = `
       <div class="cell cell--team" role="cell">
         <span class="rk">${t.rank ?? ''}</span>
-        <span class="dot">.</span>
+<!--        <span class="dot">.</span>-->
         <span class="team-name">${escapeHTML(t.team || '')}</span>
       </div>
       <div class="cell cell--wl" role="cell">${show(t.win)} - ${show(t.loss)}</div>
