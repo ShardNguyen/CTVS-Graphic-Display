@@ -6,7 +6,7 @@ const STORAGE_KEY = 'ctvs-standings-config-schedule';
 
 const DEFAULT_CONFIG = {
   sheetId: '',
-  sheetName: 'SCHEDULE - PREMIER',
+  sheetName: 'Sheet1',
   weekDay: 'Week 1 Day 1',
   refreshSeconds: 15
 };
@@ -67,40 +67,60 @@ function parseCSV(text){
 }
 
 /* ---------------- Schedule extraction ----------------
-   Layout mirrors the CTVS schedule sheet:
-   ... | Match ID | Division / Group | Player 1 | Time | Player 2 | ...
-   (columns C-G of the "SCHEDULE - PREMIER" tab; the "format" field is the
-   kick-off time shown in the middle pill)
-   We locate the "SCHEDULE" label cell and then read every match row
-   relative to its column, which keeps this working even if extra
-   columns exist to the left/right (as in the source file). Rows that
-   don't have all five fields (e.g. a "Week 1 Day 1" label row) are
-   skipped rather than treated as the end of the list. Only the first
-   four valid match rows found are used, since only four boxes are drawn. */
-function extractSchedule(rows){
-  let headerRowIdx = -1;
-  let matchCol = -1;
+   Layout of the sheet (columns A-F):
+     No. | ID | DIVISION | PLAYER 1 | TIME/SC | PLAYER 2
+   preceded by a title row ("MATCHES TO SHOW ON GRAPHICS SCREEN").
+   We find the header row by its column names (so extra columns / rows
+   above or to the left don't matter), then read each match row relative to
+   those columns. "ID" is the match ID, "TIME/SC" is the kick-off time (or
+   "TBA") shown in the middle pill. Rows missing a field are skipped; a fully
+   blank row after the data ends the list. Only the first four valid rows
+   are used, since only four boxes are drawn.
+   The older layout (a "SCHEDULE" label cell followed by
+   Match ID | Division | Player 1 | Time | Player 2) is still supported. */
+function normHeader(v){
+  return (v || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
 
-  outer:
+function findColumns(rows){
   for(let r = 0; r < rows.length; r++){
-    const row = rows[r];
-    for(let c = 0; c < row.length; c++){
-      if((row[c] || '').trim().toLowerCase() === 'schedule'){
-        headerRowIdx = r;
-        matchCol = c;
-        break outer;
+    const cells = rows[r].map(normHeader);
+    const idCol = cells.indexOf('id');
+    if(idCol === -1) continue;
+
+    const find = (names, from) => {
+      for(let c = from; c < cells.length; c++){
+        if(names.includes(cells[c])) return c;
       }
+      return -1;
+    };
+    const divisionCol = find(['division', 'division / group', 'group'], 0);
+    const player1Col  = find(['player 1', 'player1'], 0);
+    const timeCol     = find(['time/sc', 'time / sc', 'time', 'time/score'], 0);
+    const player2Col  = find(['player 2', 'player2'], 0);
+
+    if(divisionCol !== -1 && player1Col !== -1 && timeCol !== -1 && player2Col !== -1){
+      return { headerRowIdx: r, matchCol: idCol, divisionCol, player1Col, formatCol: timeCol, player2Col };
     }
   }
 
-  if(matchCol === -1){
-    throw new Error('Could not find a "SCHEDULE" label in the sheet.');
+  // Legacy layout: a "SCHEDULE" label cell, columns follow it.
+  for(let r = 0; r < rows.length; r++){
+    for(let c = 0; c < rows[r].length; c++){
+      if(normHeader(rows[r][c]) === 'schedule'){
+        return { headerRowIdx: r, matchCol: c, divisionCol: c + 1, player1Col: c + 2, formatCol: c + 3, player2Col: c + 4 };
+      }
+    }
   }
+  return null;
+}
 
-  const divisionCol = matchCol + 1;
-  const player1Col  = matchCol + 2;
-  const formatCol    = matchCol + 3;
-  const player2Col  = matchCol + 4;
+function extractSchedule(rows){
+  const cols = findColumns(rows);
+  if(!cols){
+    throw new Error('Could not find the header row (ID / DIVISION / PLAYER 1 / TIME/SC / PLAYER 2) in the sheet.');
+  }
+  const { headerRowIdx, matchCol, divisionCol, player1Col, formatCol, player2Col } = cols;
 
   const matches = [];
   for(let r = headerRowIdx + 1; r < rows.length; r++){
@@ -118,7 +138,7 @@ function extractSchedule(rows){
     } else if(matches.length > 0 && !matchId && !division && !player1 && !format && !player2){
       break; // blank row after the data block
     }
-    // otherwise: not a match row (e.g. the "Week 1 Day 1" label) — skip and keep scanning
+    // otherwise: not a match row — skip and keep scanning
   }
 
   return matches;
@@ -136,10 +156,19 @@ function getMatchType(division){
   return { key: 'premier', bestOf: '' };   // unknown division: default look, no format text
 }
 
-/* Excel stores the time as h:mm, but normalise "20:00:00" -> "20:00" just in case. */
+/* Time cell -> "HH:MM". Handles "20:00", "20:00:00" and "8:00 PM"; anything else
+   (e.g. "TBA") is shown as typed. */
 function formatTime(value){
-  const m = (value || '').trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
-  return m ? `${m[1].padStart(2, '0')}:${m[2]}` : (value || '').trim();
+  const v = (value || '').trim();
+  const m = v.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([ap]m)?$/i);
+  if(!m) return v;
+  let h = parseInt(m[1], 10);
+  if(m[3]){
+    const pm = m[3].toLowerCase() === 'pm';
+    if(pm && h < 12) h += 12;
+    if(!pm && h === 12) h = 0;
+  }
+  return `${String(h).padStart(2, '0')}:${m[2]}`;
 }
 
 /* Player names like "2nd Seed" -> 2<sup>nd</sup> Seed (as in the design). */
