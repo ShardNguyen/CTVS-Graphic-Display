@@ -8,8 +8,7 @@
 
 @font-face {
   font-family: score;
-  src: url('../assets/fonts/montserrat/static/Montserrat-Bold.ttf') format('truetype');
-  font-weight: normal;
+  src: url('../assets/fonts/montserrat/Montserrat-VariableFont_wght.ttf') format('truetype');
   font-style: normal;
   font-display: swap;
 }
@@ -17,7 +16,6 @@
 @font-face {
   font-family: 'Source Code Pro';
   src: url('../assets/fonts/source_code_pro/SourceCodePro-VariableFont_wght.ttf') format('truetype');
-  font-weight: 200 900;
   font-style: normal;
   font-display: swap;
 }
@@ -29,9 +27,15 @@
   --chevron:     #cdeeff;
   --white:       #ffffff;
   --pill-text:   #0c3446;
-
+  
+  /* Font */
   --font-display: 'Name Smile', 'Chakra Petch', Helvetica, sans-serif;
   --font-mono: 'Source Code Pro', ui-monospace, 'SFMono-Regular', 'Courier New', Consolas, monospace;
+
+  /* Font sizes */
+  --font-size-stats: 30px;
+  --font-size-rank: 30px;
+  --font-size-row-head: 26px;
 }
 
 *{ box-sizing:border-box; }
@@ -170,7 +174,7 @@ html,body{
 }
 .row--head .cell{
   font-family: var(--font-display);
-  font-size:26px;
+  font-size: var(--font-size-row-head);
   color:var(--white);
 }
 .row--head .head-wl{ color: var(--blue); }
@@ -199,21 +203,14 @@ html,body{
 .rk{
   width:40px;
   text-align:center;
-  font-size:30px;
+  font-size: var(--font-size-rank);
   color:var(--white);
   flex:none;
 }
-.dot{
-  width:16px;
-  margin-left:24px;
-  text-align:center;
-  font-size:30px;
-  color:var(--blue);
-  flex:none;
-}
+
 .team-name{
   margin-left:22px;
-  font-size:30px;
+  font-size: var(--font-size-rank);
   color:var(--blue-light);
   letter-spacing:.01em;
   min-width:0;
@@ -224,16 +221,15 @@ html,body{
   justify-content:center;
   font-family: score, Helvetica, sans-serif;
   font-weight: bold;
-  font-size:30px;
+  font-size: var(--font-size-stats);
   color:var(--blue-light);
 }
 
 /* GW / GL / GD */
 .cell--stat{
   justify-content:center;
-  font-family: var(--font-mono);
-  font-weight:300;
-  font-size:33px;
+  font-family: score, Helvetica, sans-serif;
+  font-size: var(--font-size-stats);
   color:var(--white);
 }
 .row--head .cell--stat{
