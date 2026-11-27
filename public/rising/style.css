@@ -146,20 +146,17 @@ html,body{
 .board{
   position:absolute;
   left:62px; right:62px;
-  top:211px;
-  height:789px;
-  padding-bottom:30px;
+  top:262px;               /* starts below the top bar */
+  bottom:80px;             /* keep the bottom 80px clear */
   display:flex;
-  align-items:center;
-  gap:70px;
+  flex-wrap:wrap;          /* two tables per row */
+  justify-content:center;  /* centers a lone table in the last row */
+  align-content:center;
+  gap:34px 70px;
 }
 
-.table{ flex:1 1 0; min-width:0; }
+.table{ flex:0 0 calc((100% - 70px) / 2); min-width:0; }
 .table[hidden]{ display:none; }
-
-/* only one group: keep it half-width and centered */
-.board--single{ justify-content:center; }
-.board--single .table{ flex:0 0 calc((100% - 70px) / 2); }
 
 .row{
   display:grid;
@@ -168,18 +165,18 @@ html,body{
 }
 
 .row--head{
-  height:60px;
+  height:46px;
   border-bottom:4px solid var(--blue-border);
 }
 .row--head .cell{
   font-family: var(--font-display);
-  font-size:34px;
+  font-size:26px;
   color:var(--white);
 }
 .row--head .head-wl{ color: var(--blue); }
 
 .row--data{
-  height:70px;
+  height:51px;
   border-bottom:2px solid rgba(255,255,255,.9);
 }
 
@@ -202,7 +199,7 @@ html,body{
 .rk{
   width:40px;
   text-align:center;
-  font-size:40px;
+  font-size:30px;
   color:var(--white);
   flex:none;
 }
@@ -210,13 +207,13 @@ html,body{
   width:16px;
   margin-left:24px;
   text-align:center;
-  font-size:40px;
+  font-size:30px;
   color:var(--blue);
   flex:none;
 }
 .team-name{
   margin-left:22px;
-  font-size:40px;
+  font-size:30px;
   color:var(--blue-light);
   letter-spacing:.01em;
   min-width:0;
@@ -227,7 +224,7 @@ html,body{
   justify-content:center;
   font-family: score, Helvetica, sans-serif;
   font-weight: bold;
-  font-size:40px;
+  font-size:30px;
   color:var(--blue-light);
 }
 
@@ -236,22 +233,28 @@ html,body{
   justify-content:center;
   font-family: var(--font-mono);
   font-weight:300;
-  font-size:44px;
+  font-size:33px;
   color:var(--white);
 }
 .row--head .cell--stat{
   font-family: var(--font-display);
   font-weight:normal;
-  font-size:34px;
+  font-size:26px;
+}
+
+/* slot with no data in the sheet */
+.row--empty{
+  background: rgba(128,128,128,0);
+  border-bottom-color: rgba(190,190,190,.7);
 }
 
 /* status / loading / error */
 .status{
   position:absolute;
   left:0; right:0;
-  bottom:36px;
+  bottom:2px;
   text-align:center;
-  font-size:20px;
+  font-size:16px;
   letter-spacing:.08em;
   font-family: var(--font-mono);
   color: var(--blue-light);
@@ -280,7 +283,7 @@ html,body{
   position:fixed;
   top:60px; right:14px;
   z-index:11;
-  width:380px;
+  width:640px;
   max-width:calc(100vw - 28px);
   max-height:calc(100vh - 76px);
   overflow-y:auto;
@@ -329,6 +332,13 @@ html,body{
   font-weight:600;
   color:#eaf7fd;
 }
+.settings-groups{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  column-gap:12px;
+}
+.settings-groups .settings-group{ min-width:0; }
+.settings-note{ margin:0 0 8px; font-size:12px; color:#eaf7fd; }
 .settings-row{ display:flex; gap:8px; }
 .settings-row input:first-child{ flex:2; }
 .settings-row input:last-child{ flex:1; }

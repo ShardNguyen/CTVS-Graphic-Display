@@ -1,6 +1,6 @@
 /* ============================================================
    CTVS Leaderboard — Google Sheets powered broadcast graphic
-   Reads ONE tab that holds every group (max 2 shown), stacked vertically:
+   Reads ONE tab that holds every group (max 4 shown, 2 x 2), stacked vertically:
 
      RISING DIVISION - GROUP A - STANDINGS      <- merged banner
      RK | PLAYER | W - L | | GW | GL | GD | H2H/TB
@@ -9,11 +9,11 @@
      ...
 
    Settings "Group name" is matched against the banner text; "Group label"
-   is what is displayed. One group configured = centered on the board.
+   is what is displayed. An odd last group is centered in its row.
    ============================================================ */
 
 const STORAGE_KEY = 'ctvs-standings-config-rising';
-const PLACEHOLDER_ROWS = 4;
+const ROWS_PER_GROUP = 6;   // every group table always shows this many rows
 
 const DEFAULT_CONFIG = {
   sheetId: '',
@@ -23,6 +23,10 @@ const DEFAULT_CONFIG = {
   group1Label: 'Group A',
   group2Name: 'RISING DIVISION - GROUP B - STANDINGS',
   group2Label: 'Group B',
+  group3Name: '',
+  group3Label: 'Group C',
+  group4Name: '',
+  group4Label: 'Group D',
   division: 'Rising Division',
   refreshSeconds: 15
 };
@@ -229,10 +233,26 @@ function renderRows(containerId, teams){
   const container = document.getElementById(containerId);
   container.innerHTML = '';
 
-  teams.forEach(t => {
+  // Always draw ROWS_PER_GROUP rows; slots without sheet data stay empty.
+  for(let i = 0; i < ROWS_PER_GROUP; i++){
+    const t = teams[i];
     const row = document.createElement('div');
     row.className = 'row row--data';
     row.setAttribute('role', 'row');
+
+    if(!t){
+      row.classList.add('row--empty');
+      row.innerHTML = `
+        <div class="cell cell--team" role="cell"></div>
+        <div class="cell cell--wl" role="cell"></div>
+        <div class="cell cell--stat" role="cell"></div>
+        <div class="cell cell--stat" role="cell"></div>
+        <div class="cell cell--stat" role="cell"></div>
+      `;
+      container.appendChild(row);
+      continue;
+    }
+
     row.innerHTML = `
       <div class="cell cell--team" role="cell">
         <span class="rk">${t.rank ?? ''}</span>
@@ -245,13 +265,8 @@ function renderRows(containerId, teams){
       <div class="cell cell--stat" role="cell">${show(t.gd)}</div>
     `;
     container.appendChild(row);
-  });
+  }
   fitTeamNames(container);
-}
-
-function placeholderTeams(){
-  return Array.from({ length: PLACEHOLDER_ROWS }, (_, i) =>
-    ({ rank: i + 1, team: '', win: 0, loss: 0, gw: 0, gl: 0, gd: 0 }));
 }
 
 function setStatus(msg, isError){
@@ -300,7 +315,7 @@ async function refresh(cfg){
     slots.forEach((g, i) => {
       const teams = groups[i];
       if(!teams || !teams.length) missing.push(g.label);
-      renderRows(g.rows, teams && teams.length ? teams : placeholderTeams());
+      renderRows(g.rows, teams || []);
     });
 
     setStatus(missing.length
@@ -325,25 +340,26 @@ function fitStage(){
 }
 
 /* ---------------- Settings UI ---------------- */
-/** The (max 2) groups that have a Group name, in order. */
+const GROUP_SLOTS = ['A', 'B', 'C', 'D'];   // element id suffixes, one per group
+
+/** The (max 4) groups that have a Group name, in order. */
 function activeGroups(cfg){
-  return [
-    { name: (cfg.group1Name || '').trim(), label: cfg.group1Label, fallback: 'Group 1', table: 'tableA', head: 'groupALabel', rows: 'rowsA' },
-    { name: (cfg.group2Name || '').trim(), label: cfg.group2Label, fallback: 'Group 2', table: 'tableB', head: 'groupBLabel', rows: 'rowsB' },
-  ].filter(g => g.name).map(g => ({ ...g, label: (g.label || '').trim() || g.fallback }));
+  return GROUP_SLOTS.map((L, i) => ({
+    name:  (cfg[`group${i + 1}Name`] || '').trim(),
+    label: (cfg[`group${i + 1}Label`] || '').trim() || `Group ${i + 1}`,
+    table: `table${L}`, head: `group${L}Label`, rows: `rows${L}`
+  })).filter(g => g.name);
 }
 
 function applyCosmeticConfig(cfg){
   document.getElementById('division').textContent = cfg.division || DEFAULT_CONFIG.division;
 
   const slots = activeGroups(cfg);
-  ['tableA', 'tableB'].forEach(id => { document.getElementById(id).hidden = true; });
+  GROUP_SLOTS.forEach(L => { document.getElementById(`table${L}`).hidden = true; });
   slots.forEach(g => {
     document.getElementById(g.table).hidden = false;
     document.getElementById(g.head).textContent = g.label;
   });
-  // a single group is centered
-  document.querySelector('.board').classList.toggle('board--single', slots.length === 1);
 }
 
 function initSettingsUI(cfg){
@@ -352,20 +368,20 @@ function initSettingsUI(cfg){
   const idIn  = document.getElementById('cfgSheetId');
   const nameIn = document.getElementById('cfgSheetName');
   const gidIn  = document.getElementById('cfgSheetGid');
-  const g1NameIn  = document.getElementById('cfgGroup1Name');
-  const g1LabelIn = document.getElementById('cfgGroup1Label');
-  const g2NameIn  = document.getElementById('cfgGroup2Name');
-  const g2LabelIn = document.getElementById('cfgGroup2Label');
+  const groupInputs = GROUP_SLOTS.map((_, i) => ({
+    name:  document.getElementById(`cfgGroup${i + 1}Name`),
+    label: document.getElementById(`cfgGroup${i + 1}Label`)
+  }));
   const divisionIn = document.getElementById('cfgDivision');
   const refreshIn  = document.getElementById('cfgRefresh');
 
   idIn.value = cfg.sheetId;
   nameIn.value = cfg.sheetName;
   gidIn.value = cfg.sheetGid;
-  g1NameIn.value  = cfg.group1Name;
-  g1LabelIn.value = cfg.group1Label;
-  g2NameIn.value  = cfg.group2Name;
-  g2LabelIn.value = cfg.group2Label;
+  groupInputs.forEach((g, i) => {
+    g.name.value  = cfg[`group${i + 1}Name`];
+    g.label.value = cfg[`group${i + 1}Label`];
+  });
   divisionIn.value = cfg.division;
   refreshIn.value = cfg.refreshSeconds;
 
@@ -387,13 +403,13 @@ function initSettingsUI(cfg){
       sheetId: idIn.value.trim(),
       sheetName: nameIn.value.trim() || DEFAULT_CONFIG.sheetName,
       sheetGid: gidIn.value.trim(),
-      group1Name:  g1NameIn.value.trim(),      // empty = group not shown
-      group1Label: g1LabelIn.value.trim(),
-      group2Name:  g2NameIn.value.trim(),
-      group2Label: g2LabelIn.value.trim(),
       division: divisionIn.value.trim() || DEFAULT_CONFIG.division,
       refreshSeconds: Number(refreshIn.value) || DEFAULT_CONFIG.refreshSeconds
     };
+    groupInputs.forEach((g, i) => {
+      newCfg[`group${i + 1}Name`]  = g.name.value.trim();    // empty = group not shown
+      newCfg[`group${i + 1}Label`] = g.label.value.trim();
+    });
     saveConfig(newCfg);
     applyCosmeticConfig(newCfg);
     close();
@@ -412,8 +428,7 @@ function initSettingsUI(cfg){
   window.addEventListener('resize', fitStage);
 
   applyCosmeticConfig(cfg);
-  renderRows('rowsA', placeholderTeams());   // empty board shown until data arrives
-  renderRows('rowsB', placeholderTeams());
+  GROUP_SLOTS.forEach(L => renderRows(`rows${L}`, []));   // grayed-out board until data arrives
   initSettingsUI(cfg);
 
   if(extractSheetId(cfg.sheetId)){
@@ -425,8 +440,7 @@ function initSettingsUI(cfg){
   // Re-fit names once web fonts finish loading (widths change).
   if(document.fonts && document.fonts.ready){
     document.fonts.ready.then(() => {
-      fitTeamNames(document.getElementById('rowsA'));
-      fitTeamNames(document.getElementById('rowsB'));
+      GROUP_SLOTS.forEach(L => fitTeamNames(document.getElementById(`rows${L}`)));
     });
   }
 })();

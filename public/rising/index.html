@@ -21,7 +21,7 @@
     </header>
 
 
-    <!-- up to two group tables, side by side (one group = centered) -->
+    <!-- up to four group tables, 2 x 2 (a lone table in the last row is centered) -->
     <main class="board">
       <section class="table" id="tableA" role="table" aria-label="Group A standings">
         <div class="row row--head" role="row">
@@ -44,6 +44,28 @@
         </div>
         <div class="rows" id="rowsB"></div>
       </section>
+
+      <section class="table" id="tableC" role="table" aria-label="Group C standings">
+        <div class="row row--head" role="row">
+          <div class="cell cell--team" role="columnheader" id="groupCLabel">Group C</div>
+          <div class="cell cell--wl head-wl" role="columnheader">W - L</div>
+          <div class="cell cell--stat" role="columnheader">GW</div>
+          <div class="cell cell--stat" role="columnheader">GL</div>
+          <div class="cell cell--stat" role="columnheader">GD</div>
+        </div>
+        <div class="rows" id="rowsC"></div>
+      </section>
+
+      <section class="table" id="tableD" role="table" aria-label="Group D standings">
+        <div class="row row--head" role="row">
+          <div class="cell cell--team" role="columnheader" id="groupDLabel">Group D</div>
+          <div class="cell cell--wl head-wl" role="columnheader">W - L</div>
+          <div class="cell cell--stat" role="columnheader">GW</div>
+          <div class="cell cell--stat" role="columnheader">GL</div>
+          <div class="cell cell--stat" role="columnheader">GD</div>
+        </div>
+        <div class="rows" id="rowsD"></div>
+      </section>
     </main>
 
     <div class="status" id="status" hidden></div>
@@ -60,7 +82,7 @@
     </label>
 
     <label>
-      Sheet tab name (holds both groups)
+      Sheet tab name (holds all groups)
       <input id="cfgSheetName" type="text" placeholder="RISING - STANDINGS (6)">
     </label>
 
@@ -69,29 +91,53 @@
       <input id="cfgSheetGid" type="text" placeholder="e.g. 123456789">
     </label>
 
-    <fieldset class="settings-group">
-      <legend>Group 1 (left)</legend>
-      <label>
-        Group name (banner text to search for in the sheet)
-        <input id="cfgGroup1Name" type="text" placeholder="RISING DIVISION - GROUP A - STANDINGS">
-      </label>
-      <label>
-        Group label (shown on the website)
-        <input id="cfgGroup1Label" type="text" placeholder="Group A">
-      </label>
-    </fieldset>
-
-    <fieldset class="settings-group">
-      <legend>Group 2 (right) — leave the name empty to show only one group</legend>
-      <label>
-        Group name (banner text to search for in the sheet)
-        <input id="cfgGroup2Name" type="text" placeholder="RISING DIVISION - GROUP B - STANDINGS">
-      </label>
-      <label>
-        Group label (shown on the website)
-        <input id="cfgGroup2Label" type="text" placeholder="Group B">
-      </label>
-    </fieldset>
+    <p class="settings-note">Leave a Group name empty to hide that group.</p>
+    <div class="settings-groups">
+      <fieldset class="settings-group">
+        <legend>Group 1</legend>
+        <label>
+          Group name (banner text in the sheet)
+          <input id="cfgGroup1Name" type="text" placeholder="RISING DIVISION - GROUP A - STANDINGS">
+        </label>
+        <label>
+          Group label (shown on the website)
+          <input id="cfgGroup1Label" type="text" placeholder="Group A">
+        </label>
+      </fieldset>
+      <fieldset class="settings-group">
+        <legend>Group 2</legend>
+        <label>
+          Group name (banner text in the sheet)
+          <input id="cfgGroup2Name" type="text" placeholder="RISING DIVISION - GROUP B - STANDINGS">
+        </label>
+        <label>
+          Group label (shown on the website)
+          <input id="cfgGroup2Label" type="text" placeholder="Group B">
+        </label>
+      </fieldset>
+      <fieldset class="settings-group">
+        <legend>Group 3</legend>
+        <label>
+          Group name (banner text in the sheet)
+          <input id="cfgGroup3Name" type="text" placeholder="RISING DIVISION - GROUP C - STANDINGS">
+        </label>
+        <label>
+          Group label (shown on the website)
+          <input id="cfgGroup3Label" type="text" placeholder="Group C">
+        </label>
+      </fieldset>
+      <fieldset class="settings-group">
+        <legend>Group 4</legend>
+        <label>
+          Group name (banner text in the sheet)
+          <input id="cfgGroup4Name" type="text" placeholder="RISING DIVISION - GROUP D - STANDINGS">
+        </label>
+        <label>
+          Group label (shown on the website)
+          <input id="cfgGroup4Label" type="text" placeholder="Group D">
+        </label>
+      </fieldset>
+    </div>
 
     <label>
       Division label
@@ -113,8 +159,8 @@
       One tab holds every group. The site looks for a banner matching
       <strong>Group name</strong> (e.g. <strong>RISING DIVISION - GROUP A - STANDINGS</strong>)
       and shows the table below it (RK, PLAYER, W - L, GW, GL, GD) under the
-      <strong>Group label</strong>. At most 2 groups are shown; with only one,
-      it is centered.
+      <strong>Group label</strong>. At most 4 groups are shown, two per row; with an
+      odd number, the last one is centered.
     </p>
   </div>
 
