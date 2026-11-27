@@ -155,7 +155,7 @@ html,body{
   gap:34px 70px;
 }
 
-.table{ flex:0 0 calc((100% - 70px) / 2); min-width:0; }
+.table{ flex:0 0 calc((100% - 70px) / 2); min-width:0; background: rgba(0,0,0,.5);}
 .table[hidden]{ display:none; }
 
 .row{
@@ -244,7 +244,6 @@ html,body{
 
 /* slot with no data in the sheet */
 .row--empty{
-  background: rgba(128,128,128,0);
   border-bottom-color: rgba(190,190,190,.7);
 }
 
