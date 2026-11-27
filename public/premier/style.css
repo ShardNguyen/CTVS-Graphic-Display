@@ -8,8 +8,7 @@
 
 @font-face {
   font-family: score;
-  src: url('../assets/fonts/montserrat/static/Montserrat-Bold.ttf') format('truetype');
-  font-weight: normal;
+  src: url('../assets/fonts/montserrat/Montserrat-VariableFont_wght.ttf') format('truetype');
   font-style: normal;
   font-display: swap;
 }
@@ -42,7 +41,16 @@
 
   --font-display: 'Name Smile', 'Chakra Petch', Helvetica, sans-serif;
   --font-mono: ui-monospace, 'SFMono-Regular', 'Courier New', Consolas, monospace;
-
+  
+  /* Font sizes */
+  --font-size-stats: 54px;
+  --font-size-rank: 54px;
+  --font-size-column-header: 40px;
+  
+  /* Cell paddings */
+  --cell-width: 1.6vw;
+  --cell-height: 1vh;
+  
   --col-rank:   1.1fr;
   --col-team:   6.5fr;
   --col-wl:     2.1fr;
@@ -156,12 +164,11 @@ html,body{
   display:flex;
   flex-direction:column;
   justify-content:center;
-  padding-bottom: clamp(24px, 11vh, 128px);
-  padding-left: clamp(24px,4vw,64px);
-  padding-right: clamp(24px,4vw,64px);
+  padding: 40px clamp(24px,4vw,64px) 80px clamp(24px,4vw,64px);
 }
 
 .table{
+  background: rgba(0,0,0,.5);
   width:100%;
   overflow:hidden;
 }
@@ -179,7 +186,7 @@ html,body{
 .cell{
   display:flex;
   align-items:center;
-  padding: clamp(10px,1.6vh,18px) clamp(10px,1.4vw,26px);
+  padding: var(--cell-height) var(--cell-width);
   font-family: var(--font-display);
   font-weight:normal;
   text-transform:uppercase;
@@ -187,7 +194,7 @@ html,body{
 
 /* header row */
 div[role="columnheader"] {
-  font-size: clamp(16px, 1.9vw, 28px);
+  font-size: var(--font-size-column-header);
   letter-spacing:.02em;
   border-bottom: 4px solid var(--blue-border);
   font-family: var(--font-display);
@@ -198,26 +205,25 @@ div[role="columnheader"] {
 
 .cell--rank{
   justify-content:center;
-  font-size: clamp(22px, 2.6vw, 38px);
+  font-size: var(--font-size-rank);
   color: var(--white);
 }
 .cell--team{
-  font-size: clamp(22px, 2.6vw, 38px);
   color: var(--blue-light);
   letter-spacing:.01em;
+  font-size: var(--font-size-rank);
 }
 .cell--wl{
   justify-content:center;
   font-family: score, Helvetica, sans-serif;
-  font-weight: bold;
-  font-size:44px;
+  font-weight: 700;
+  font-size: var(--font-size-rank);
   color:var(--blue-light);
 }
 .cell--stat{
   justify-content:center;
-  font-family: var(--font-mono);
-  font-weight:300;
-  font-size:44px;
+  font-family: score, Helvetica, sans-serif;
+  font-size: var(--font-size-stats);
   color:var(--white);
 }
 
